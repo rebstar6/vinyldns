@@ -18,9 +18,6 @@ package vinyldns.api.domain.membership
 
 import java.util.UUID
 
-import org.joda.time.DateTime
-import vinyldns.api.domain.auth.AuthPrincipal
-
 object GroupStatus extends Enumeration {
   type GroupStatus = Value
   val Active, Deleted = Value

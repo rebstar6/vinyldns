@@ -30,7 +30,7 @@ import vinyldns.api.protobuf.ProtobufConversions
 import vinyldns.api.route.Monitored
 
 object DynamoDBRecordSetRepository extends ProtobufConversions {
-
+{
   private[repository] val ZONE_ID = "zone_id"
   private[repository] val RECORD_SET_ID = "record_set_id"
   private[repository] val RECORD_SET_TYPE = "record_set_type"

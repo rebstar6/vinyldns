@@ -19,14 +19,9 @@ package vinyldns.api.domain.batch
 import java.util.UUID
 
 import org.joda.time.DateTime
-import vinyldns.api.domain.batch.BatchChangeInterfaces.ValidatedBatch
 import vinyldns.api.domain.batch.BatchChangeStatus.BatchChangeStatus
 import vinyldns.api.domain.batch.BatchTransformations.{ChangeForValidation, RecordKey}
 import vinyldns.api.domain.batch.SingleChangeStatus.SingleChangeStatus
-import vinyldns.api.domain.dns.DnsConversions._
-import vinyldns.api.domain.record.RecordType._
-import vinyldns.api.domain.record.{RecordData, RecordSet, RecordSetChange}
-import vinyldns.api.domain.zone.Zone
 
 case class BatchChangeSummary(
     userId: String,

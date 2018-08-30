@@ -16,7 +16,7 @@
 
 package vinyldns.api.domain.batch
 
-import cats.effect._
+import cats.effect.IO
 import vinyldns.api.repository.Repository
 
 // $COVERAGE-OFF$
@@ -37,4 +37,3 @@ trait BatchChangeRepository extends Repository {
   def getSingleChanges(singleChangeIds: List[String]): IO[List[SingleChange]]
 
 }
-// $COVERAGE-ON$

@@ -16,12 +16,6 @@
 
 package vinyldns.api.repository
 
-import vinyldns.api.domain.batch.BatchChangeRepository
-import vinyldns.api.domain.membership.{GroupChangeRepository, MembershipRepository}
-import vinyldns.api.domain.record.{RecordChangeRepository, RecordSetRepository}
-import vinyldns.api.domain.zone.ZoneChangeRepository
-import vinyldns.api.domain.membership.{GroupRepository, UserRepository}
-import vinyldns.api.domain.zone.ZoneRepository
 import vinyldns.api.repository.RepositoryName.RepositoryName
 
 import scala.reflect.ClassTag
