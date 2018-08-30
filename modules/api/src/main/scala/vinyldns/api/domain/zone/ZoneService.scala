@@ -62,17 +62,6 @@ class ZoneService(
       send <- commandBus.sendZoneCommand(updateZoneChange)
     } yield send
 
-  private def fixConn(oldZ: Zone, newZ: Zone): Option[ZoneConnection] = {
-    val newC = newZ.connection
-
-    newZ.connection.map(newConn => {
-      val oldConn = oldZ.connection.getOrElse(newConn)
-      newConn.copy(
-        key =
-          if (oldConn.key == newConn.decrypted(Crypto.instance).key) oldConn.key else newConn.key)
-    })
-  }
-
   def deleteZone(zoneId: String, auth: AuthPrincipal): Result[ZoneCommandResult] =
     for {
       zone <- getZoneOrFail(zoneId)
@@ -240,4 +229,12 @@ class ZoneService(
       }
     } yield ZoneACLInfo(ruleInfos.filter(_.displayName.isDefined))
   }
+
+  private def fixConn(oldZ: Zone, newZ: Zone): Option[ZoneConnection] =
+    newZ.connection.map(newConn => {
+      val oldConn = oldZ.connection.getOrElse(newConn)
+      newConn.copy(
+        key =
+          if (oldConn.key == newConn.decrypted(Crypto.instance).key) oldConn.key else newConn.key)
+    })
 }

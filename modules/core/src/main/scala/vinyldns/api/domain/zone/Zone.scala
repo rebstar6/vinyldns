@@ -138,39 +138,3 @@ case class ZoneConnection(name: String, keyName: String, key: String, primarySer
   def decrypted(crypto: CryptoAlgebra): ZoneConnection =
     copy(key = crypto.decrypt(key))
 }
-
-//object ZoneConnection {
-//
-//  final val ZONE_CONNECTION_MIN = 1
-//  final val ZONE_CONNECTION_MAX = 255
-//  def build(
-//      name: String,
-//      keyName: String,
-//      key: String,
-//      primaryServer: String): ValidatedNel[DomainValidationError, ZoneConnection] =
-//    (
-//      validateStringLength(name, Some(ZONE_CONNECTION_MIN), ZONE_CONNECTION_MAX),
-//      keyName.validNel,
-//      key.validNel,
-//      validateHostServer(primaryServer)
-//    ).mapN(ZoneConnection.apply)
-//
-//  def validateHostServer(host: String): ValidatedNel[DomainValidationError, String] = {
-//    val splitHosts = host.split(":") // First part is host name or IPv4
-//
-//    val checkDomainName = validateHostName(splitHosts(0))
-//    val checkIpv4 = validateIpv4Address(splitHosts(0))
-//    val checkPort = if (splitHosts.length == 1) "".validNel else validatePort(splitHosts(1))
-//
-//    /*
-//     This is a little hard to follow:
-//
-//     If it is either a valid domain name OR valid IP address and the port is valid, then return success.
-//     Otherwise, return any failures. If neither the domain name or IP address are valid, both failures will be returned.
-//
-//     Note: We use the `.map(_ => ...)` convention here to return the original string upon success since the +++ operator
-//     appends Successes and Failures if both are of the same type.
-//     */
-//    checkDomainName.findValid(checkIpv4).combine(checkPort).map(_ => host)
-//  }
-//}

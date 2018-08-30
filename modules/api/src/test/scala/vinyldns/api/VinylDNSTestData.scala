@@ -224,14 +224,16 @@ trait VinylDNSTestData {
     List(AAAAData("1:2:3:4:5:6:7:8")))
 
   val pendingCreateAAAA: RecordSetChange = RecordSetChangeGenerator.forAdd(aaaa, zoneActive, okAuth)
-  val pendingCreateCNAME: RecordSetChange = RecordSetChangeGenerator.forAdd(cname, zoneActive, okAuth)
+  val pendingCreateCNAME: RecordSetChange =
+    RecordSetChangeGenerator.forAdd(cname, zoneActive, okAuth)
   val pendingChangeSet: ChangeSet = ChangeSet(Seq(pendingCreateAAAA, pendingCreateCNAME))
   val pendingCreateNS: RecordSetChange = RecordSetChangeGenerator.forAdd(ns, zoneActive, okAuth)
 
   val aaaaUpdated: RecordSet = aaaa.copy(ttl = aaaa.ttl + 100)
   val pendingUpdateAAAA: RecordSetChange =
     RecordSetChangeGenerator.forUpdate(aaaa, aaaaUpdated, zoneActive, okAuth)
-  val pendingDeleteAAAA: RecordSetChange = RecordSetChangeGenerator.forDelete(aaaa, zoneActive, okAuth)
+  val pendingDeleteAAAA: RecordSetChange =
+    RecordSetChangeGenerator.forDelete(aaaa, zoneActive, okAuth)
   val completeCreateAAAA: RecordSetChange =
     pendingCreateAAAA.copy(status = RecordSetChangeStatus.Complete)
   val completeCreateCNAME: RecordSetChange =

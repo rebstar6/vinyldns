@@ -43,8 +43,8 @@ object Dependencies {
   )
 
   lazy val coreDependencies = Seq(
-    "org.typelevel" %% "cats-effect"  % catsEffectV,
-    "com.typesafe"  %  "config"       % configV,
+    "org.typelevel"             %% "cats-effect"  % catsEffectV,
+    "com.typesafe"              %  "config"       % configV,
     "com.typesafe.akka"         %% "akka-http"                      % akkaHttpV,
     "com.typesafe.akka"         %% "akka-http-spray-json"           % akkaHttpV,
     "de.heikoseeberger"         %% "akka-http-json4s"               % "1.21.0",
@@ -56,8 +56,8 @@ object Dependencies {
     "com.amazonaws"             %  "aws-java-sdk-dynamodb"          % awsV withSources(),
     "nl.grons"                  %% "metrics-scala"                  % metricsScalaV,
     "org.slf4j"                 %  "slf4j-api"                      % "1.7.7",
-    "org.scodec"    %% "scodec-bits"  % scodecV,
-    "org.scalatest" %% "scalatest"    % scalaTestV % "test"
+    "org.scodec"                %% "scodec-bits"  % scodecV,
+    "org.scalatest"             %% "scalatest"    % scalaTestV % "test"
   )
 
   lazy val testDependencies = Seq(
