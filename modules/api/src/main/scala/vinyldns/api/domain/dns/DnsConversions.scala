@@ -33,6 +33,8 @@ class BadDNSRecordException(message: String) extends Exception(message) {}
 
 trait DnsConversions {
 
+  import DomainHelpers._
+
   /**
     * record names are either relative to the zone name or
     * if the record name is '@' the zone name is used
@@ -49,15 +51,6 @@ trait DnsConversions {
       zoneDnsName(zoneName).toString
     else
       DNS.Name.fromString(recordName).relativize(zoneDnsName(zoneName)).toString
-
-  def omitTrailingDot(name: String): String =
-    if (name.endsWith(".")) {
-      name.substring(0, name.length - 1)
-    } else {
-      name
-    }
-
-  def ensureTrailingDot(str: String): String = DomainHelpers.ensureTrailingDot(str)
 
   def getZoneFromNonApexFqdn(domainName: String): String =
     domainName.substring(domainName.indexOf(".") + 1)

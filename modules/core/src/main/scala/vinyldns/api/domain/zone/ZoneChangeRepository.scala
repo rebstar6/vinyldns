@@ -18,7 +18,6 @@ package vinyldns.api.domain.zone
 
 import cats.effect._
 import vinyldns.api.repository.Repository
-import vinyldns.api.repository.dynamodb.DynamoDBZoneChangeRepository
 
 case class ListZoneChangesResults(
     items: List[ZoneChange] = List[ZoneChange](),
@@ -38,10 +37,4 @@ trait ZoneChangeRepository extends Repository {
       zoneId: String,
       startFrom: Option[String] = None,
       maxItems: Int = 100): IO[ListZoneChangesResults]
-}
-
-object ZoneChangeRepository {
-  def apply(): ZoneChangeRepository =
-    DynamoDBZoneChangeRepository()
-
 }

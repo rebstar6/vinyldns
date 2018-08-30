@@ -18,7 +18,6 @@ package vinyldns.api.domain.record
 
 import cats.effect._
 import vinyldns.api.repository.Repository
-import vinyldns.api.repository.dynamodb.DynamoDBRecordChangeRepository
 
 case class ListRecordSetChangesResults(
     items: List[RecordSetChange] = List[RecordSetChange](),
@@ -42,10 +41,4 @@ trait RecordChangeRepository extends Repository {
   def getRecordSetChange(zoneId: String, changeId: String): IO[Option[RecordSetChange]]
 
   def getAllPendingZoneIds(): IO[List[String]]
-}
-
-object RecordChangeRepository {
-
-  def apply(): RecordChangeRepository =
-    DynamoDBRecordChangeRepository()
 }

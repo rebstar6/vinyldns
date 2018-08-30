@@ -25,7 +25,6 @@ import com.amazonaws.services.dynamodbv2.model._
 import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
-import vinyldns.api.VinylDNSConfig
 import vinyldns.api.domain.record._
 import vinyldns.api.protobuf.ProtobufConversions
 import vinyldns.api.route.Monitored
@@ -33,15 +32,6 @@ import vinyldns.proto.VinylDNSProto
 
 import scala.collection.JavaConverters._
 import scala.util.Try
-
-object DynamoDBRecordChangeRepository {
-  def apply(config: Config, dynamoConfig: Config): DynamoDBRecordChangeRepository =
-    new DynamoDBRecordChangeRepository(
-      config,
-      new DynamoDBHelper(
-        DynamoDBClient(dynamoConfig),
-        LoggerFactory.getLogger("DynamoDBRecordChangeRepository")))
-}
 
 class DynamoDBRecordChangeRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
     extends RecordChangeRepository

@@ -20,7 +20,7 @@ import java.util.UUID
 
 import org.joda.time.DateTime
 import vinyldns.api.domain.auth.AuthPrincipal
-import vinyldns.api.domain.dns.DnsConversions
+import vinyldns.api.domain.DomainHelpers
 import vinyldns.api.domain.zone.{Zone, ZoneCommand, ZoneCommandResult}
 
 object RecordSetChangeStatus extends Enumeration {
@@ -94,7 +94,7 @@ case class RecordSetChange(
   }
 }
 
-object RecordSetChange extends DnsConversions {
+object RecordSetChange {
 
   def forAdd(
       recordSet: RecordSet,

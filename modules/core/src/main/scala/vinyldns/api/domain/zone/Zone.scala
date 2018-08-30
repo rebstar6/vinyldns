@@ -19,7 +19,7 @@ package vinyldns.api.domain.zone
 import java.util.UUID
 
 import org.joda.time.DateTime
-import vinyldns.core.crypto.{Crypto, CryptoAlgebra}
+import vinyldns.core.crypto.CryptoAlgebra
 
 object ZoneStatus extends Enumeration {
   type ZoneStatus = Value

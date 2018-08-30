@@ -19,7 +19,6 @@ package vinyldns.api.domain.record
 import cats.effect._
 import vinyldns.api.domain.record.RecordType.RecordType
 import vinyldns.api.repository.Repository
-import vinyldns.api.repository.dynamodb.DynamoDBRecordSetRepository
 
 case class ListRecordSetResults(
     recordSets: List[RecordSet] = List[RecordSet](),
@@ -45,10 +44,4 @@ trait RecordSetRepository extends Repository {
   def getRecordSetCount(zoneId: String): IO[Int]
 
   def getRecordSetsByName(zoneId: String, name: String): IO[List[RecordSet]]
-}
-
-object RecordSetRepository {
-
-  def apply(): RecordSetRepository =
-    DynamoDBRecordSetRepository()
 }

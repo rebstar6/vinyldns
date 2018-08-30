@@ -15,11 +15,6 @@ object Dependencies {
   lazy val awsV = "1.11.95"
 
   lazy val compileDependencies = Seq(
-    "com.typesafe.akka"         %% "akka-http-spray-json"           % akkaHttpV,
-    "de.heikoseeberger"         %% "akka-http-json4s"               % "1.21.0",
-    "com.typesafe.akka"         %% "akka-actor"                     % akkaV,
-    "com.typesafe.akka"         %% "akka-remote"                    % akkaV,
-    "com.typesafe.akka"         %% "akka-slf4j"                     % akkaV,
     "ch.qos.logback"            %  "logback-classic"                % "1.0.7",
     "com.aaronbedra"            %  "orchard"                        % "0.1.1",
     "com.amazonaws"             % "aws-java-sdk-sqs"                % awsV withSources(),
@@ -51,6 +46,11 @@ object Dependencies {
     "org.typelevel" %% "cats-effect"  % catsEffectV,
     "com.typesafe"  %  "config"       % configV,
     "com.typesafe.akka"         %% "akka-http"                      % akkaHttpV,
+    "com.typesafe.akka"         %% "akka-http-spray-json"           % akkaHttpV,
+    "de.heikoseeberger"         %% "akka-http-json4s"               % "1.21.0",
+    "com.typesafe.akka"         %% "akka-remote"                    % akkaV,
+    "com.typesafe.akka"         %% "akka-slf4j"                     % akkaV,
+    "com.typesafe.akka"         %% "akka-actor"                     % akkaV,
     "joda-time"                 %  "joda-time"                      % "2.8.1",
     "com.amazonaws"             %  "aws-java-sdk-core"              % awsV withSources(),
     "com.amazonaws"             %  "aws-java-sdk-dynamodb"          % awsV withSources(),

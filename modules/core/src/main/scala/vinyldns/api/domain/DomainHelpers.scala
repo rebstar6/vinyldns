@@ -20,4 +20,11 @@ object DomainHelpers {
 
   def ensureTrailingDot(str: String): String = if (str.endsWith(".")) str else s"$str."
 
+  def omitTrailingDot(name: String): String =
+    if (name.endsWith(".")) {
+      name.substring(0, name.length - 1)
+    } else {
+      name
+    }
+
 }

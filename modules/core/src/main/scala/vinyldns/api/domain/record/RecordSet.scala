@@ -19,8 +19,7 @@ package vinyldns.api.domain.record
 import java.util.UUID
 
 import org.joda.time.DateTime
-import vinyldns.api.domain.dns.DnsConversions.ensureTrailingDot
-import vinyldns.api.domain.dns.DnsConversions
+import vinyldns.api.domain.DomainHelpers.ensureTrailingDot
 
 object RecordType extends Enumeration {
   type RecordType = Value
