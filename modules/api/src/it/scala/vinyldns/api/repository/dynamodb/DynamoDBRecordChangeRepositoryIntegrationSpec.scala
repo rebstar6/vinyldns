@@ -100,26 +100,26 @@ class DynamoDBRecordChangeRepositoryIntegrationSpec
   private val recordSetChangesA = {
     for {
       rs <- recordSetA
-    } yield RecordSetChange.forAdd(rs, zoneA, auth)
+    } yield RecordSetChangeGenerator.forAdd(rs, zoneA, auth)
   }.sortBy(_.id)
 
   private val recordSetChangesB = {
     for {
       rs <- recordSetB
-    } yield RecordSetChange.forAdd(rs, zoneB, auth)
+    } yield RecordSetChangeGenerator.forAdd(rs, zoneB, auth)
   }.sortBy(_.id)
 
   private val recordSetChangesC = {
     for {
       rs <- recordSetA
-    } yield RecordSetChange.forDelete(rs, zoneA, auth)
+    } yield RecordSetChangeGenerator.forDelete(rs, zoneA, auth)
   }.sortBy(_.id)
 
   private val recordSetChangesD = {
     for {
       rs <- recordSetA
       updateRs <- updateRecordSetA
-    } yield RecordSetChange.forUpdate(rs, updateRs, zoneA)
+    } yield RecordSetChangeGenerator.forUpdate(rs, updateRs, zoneA)
   }.sortBy(_.id)
 
   private val changeSetA = ChangeSet(recordSetChangesA)
@@ -175,7 +175,7 @@ class DynamoDBRecordChangeRepositoryIntegrationSpec
   private val recordSetChangesCreateC = {
     for {
       (rs, index) <- recordSetsC.zipWithIndex
-    } yield RecordSetChange.forAdd(rs, zoneC, auth).copy(created = timeOrder(index))
+    } yield RecordSetChangeGenerator.forAdd(rs, zoneC, auth).copy(created = timeOrder(index))
   }
 
   private val recordSetChangesUpdateC = {
@@ -190,7 +190,7 @@ class DynamoDBRecordChangeRepositoryIntegrationSpec
   private val recordSetChangesDeleteC = {
     for {
       (rs, index) <- recordSetsC.zipWithIndex
-    } yield RecordSetChange.forDelete(rs, zoneC, auth).copy(created = timeOrder(index + 6))
+    } yield RecordSetChangeGenerator.forDelete(rs, zoneC, auth).copy(created = timeOrder(index + 6))
   }
 
   private val changeSetCreateC = record.ChangeSet(recordSetChangesCreateC)

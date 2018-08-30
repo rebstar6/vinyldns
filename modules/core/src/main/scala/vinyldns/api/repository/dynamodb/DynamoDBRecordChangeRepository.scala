@@ -33,6 +33,16 @@ import vinyldns.proto.VinylDNSProto
 import scala.collection.JavaConverters._
 import scala.util.Try
 
+object DynamoDBRecordChangeRepository {
+
+  def apply(config: Config, dynamoConfig: Config): DynamoDBRecordChangeRepository =
+    new DynamoDBRecordChangeRepository(
+      config,
+      new DynamoDBHelper(
+        DynamoDBClient(dynamoConfig),
+        LoggerFactory.getLogger(classOf[DynamoDBGroupChangeRepository])))
+}
+
 class DynamoDBRecordChangeRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
     extends RecordChangeRepository
     with ProtobufConversions

@@ -67,7 +67,9 @@ class ZoneService(
 
     newZ.connection.map(newConn => {
       val oldConn = oldZ.connection.getOrElse(newConn)
-      newConn.copy(key = if (oldConn.key == newConn.decrypted(Crypto.instance).key) oldConn.key else newConn.key)
+      newConn.copy(
+        key =
+          if (oldConn.key == newConn.decrypted(Crypto.instance).key) oldConn.key else newConn.key)
     })
   }
 

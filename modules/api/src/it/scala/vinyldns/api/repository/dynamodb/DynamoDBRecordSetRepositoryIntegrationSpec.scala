@@ -441,7 +441,7 @@ class DynamoDBRecordSetRepositoryIntegrationSpec
             name = s"$i.apply.test.",
             id = UUID.randomUUID().toString)
 
-      val pendingChanges = newRecordSets.map(RecordSetChange.forAdd(_, zones.head, okAuth))
+      val pendingChanges = newRecordSets.map(RecordSetChangeGenerator.forAdd(_, zones.head, okAuth))
       val bigPendingChangeSet = ChangeSet(pendingChanges)
 
       try {

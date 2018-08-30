@@ -45,7 +45,7 @@ class DnsConversionsIntegrationSpec
       val testRecord = aaaa.copy(zoneId = testZone.id)
       val conn = DnsConnection(testZone.connection.get)
       val result: DnsResponse =
-        rightResultOf(conn.addRecord(RecordSetChange.forAdd(testRecord, testZone)).value)
+        rightResultOf(conn.addRecord(RecordSetChangeGenerator.forAdd(testRecord, testZone)).value)
 
       result shouldBe a[NoError]
       val resultingMessage = result.asInstanceOf[NoError].message
