@@ -24,7 +24,6 @@ import com.amazonaws.services.dynamodbv2.model._
 import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
-import vinyldns.api.VinylDNSConfig
 import vinyldns.api.domain.membership.{GroupChange, GroupChangeRepository, ListGroupChangesResults}
 import vinyldns.api.protobuf.GroupProtobufConversions
 import vinyldns.api.route.Monitored
@@ -34,9 +33,7 @@ import scala.collection.JavaConverters._
 
 object DynamoDBGroupChangeRepository {
 
-  def apply(
-      config: Config = VinylDNSConfig.groupChangesStoreConfig,
-      dynamoConfig: Config = VinylDNSConfig.dynamoConfig): DynamoDBGroupChangeRepository =
+  def apply(config: Config, dynamoConfig: Config): DynamoDBGroupChangeRepository =
     new DynamoDBGroupChangeRepository(
       config,
       new DynamoDBHelper(
@@ -44,9 +41,7 @@ object DynamoDBGroupChangeRepository {
         LoggerFactory.getLogger(classOf[DynamoDBGroupChangeRepository])))
 }
 
-class DynamoDBGroupChangeRepository(
-    config: Config = VinylDNSConfig.groupChangesStoreConfig,
-    dynamoDBHelper: DynamoDBHelper)
+class DynamoDBGroupChangeRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
     extends GroupChangeRepository
     with Monitored
     with GroupProtobufConversions {

@@ -19,7 +19,6 @@ package vinyldns.api.domain.membership
 import java.util.UUID
 
 import org.joda.time.DateTime
-import vinyldns.api.domain.auth.AuthPrincipal
 
 object GroupStatus extends Enumeration {
   type GroupStatus = Value
@@ -89,12 +88,8 @@ object Group {
       description: Option[String],
       members: Set[String],
       admins: Set[String]): ValidatedNel[String, Group] =
-    Group(
-      name,
-      email,
-      description,
-      memberIds = members ++ admins,
-      adminUserIds = admins).validNel[String]
+    Group(name, email, description, memberIds = members ++ admins, adminUserIds = admins)
+      .validNel[String]
 
   def build(
       id: String,
@@ -103,37 +98,11 @@ object Group {
       description: Option[String],
       members: Set[String],
       admins: Set[String]): ValidatedNel[String, Group] =
-    Group(
-      name,
-      email,
-      description,
-      id,
-      memberIds = members ++ admins,
-      adminUserIds = admins).validNel[String]
+    Group(name, email, description, id, memberIds = members ++ admins, adminUserIds = admins)
+      .validNel[String]
 }
 
 object GroupChangeType extends Enumeration {
   type GroupChangeType = Value
   val Create, Update, Delete = Value
-}
-
-import vinyldns.api.domain.membership.GroupChangeType._
-case class GroupChange(
-    newGroup: Group,
-    changeType: GroupChangeType,
-    userId: String,
-    oldGroup: Option[Group] = None,
-    id: String = UUID.randomUUID().toString,
-    created: DateTime = DateTime.now
-)
-
-object GroupChange {
-  def forAdd(group: Group, authPrincipal: AuthPrincipal): GroupChange =
-    GroupChange(group, GroupChangeType.Create, authPrincipal.userId)
-
-  def forUpdate(newGroup: Group, oldGroup: Group, authPrincipal: AuthPrincipal): GroupChange =
-    GroupChange(newGroup, GroupChangeType.Update, authPrincipal.userId, Some(oldGroup))
-
-  def forDelete(group: Group, authPrincipal: AuthPrincipal): GroupChange =
-    GroupChange(group, GroupChangeType.Delete, authPrincipal.userId)
 }

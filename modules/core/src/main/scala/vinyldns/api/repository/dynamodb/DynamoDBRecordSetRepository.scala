@@ -29,8 +29,7 @@ import vinyldns.api.domain.record.{ChangeSet, ListRecordSetResults, RecordSet, R
 import vinyldns.api.protobuf.ProtobufConversions
 import vinyldns.api.route.Monitored
 
-object DynamoDBRecordSetRepository extends ProtobufConversions {
-{
+object DynamoDBRecordSetRepository {
   private[repository] val ZONE_ID = "zone_id"
   private[repository] val RECORD_SET_ID = "record_set_id"
   private[repository] val RECORD_SET_TYPE = "record_set_type"
@@ -38,9 +37,7 @@ object DynamoDBRecordSetRepository extends ProtobufConversions {
   private[repository] val RECORD_SET_SORT = "record_set_sort"
   private[repository] val RECORD_SET_BLOB = "record_set_blob"
 
-  def apply(
-      config: Config = VinylDNSConfig.recordSetStoreConfig,
-      dynamoConfig: Config = VinylDNSConfig.dynamoConfig): DynamoDBRecordSetRepository =
+  def apply(config: Config, dynamoConfig: Config): DynamoDBRecordSetRepository =
     new DynamoDBRecordSetRepository(
       config,
       new DynamoDBHelper(
@@ -49,9 +46,7 @@ object DynamoDBRecordSetRepository extends ProtobufConversions {
 
 }
 
-class DynamoDBRecordSetRepository(
-    config: Config = VinylDNSConfig.recordSetStoreConfig,
-    dynamoDBHelper: DynamoDBHelper)
+class DynamoDBRecordSetRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
     extends RecordSetRepository
     with DynamoDBRecordSetConversions
     with Monitored

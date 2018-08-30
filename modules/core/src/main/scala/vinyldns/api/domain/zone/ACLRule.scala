@@ -19,7 +19,6 @@ package vinyldns.api.domain.zone
 import AccessLevel.AccessLevel
 import vinyldns.api.domain.record.RecordType.RecordType
 
-
 object AccessLevel extends Enumeration {
   type AccessLevel = Value
   val NoAccess, Read, Write, Delete = Value
@@ -33,18 +32,18 @@ case class ACLRule(
     recordMask: Option[String] = None, // regular expression for record names
     recordTypes: Set[RecordType] = Set.empty
 )
-//
-//object ACLRule {
-//  final val DESCRIPTION_MAX = 255
-//  def apply(aclRuleInfo: ACLRuleInfo): ACLRule =
-//    zone.ACLRule(
-//      aclRuleInfo.accessLevel,
-//      aclRuleInfo.description,
-//      aclRuleInfo.userId,
-//      aclRuleInfo.groupId,
-//      aclRuleInfo.recordMask,
-//      aclRuleInfo.recordTypes)
-//
+
+object ACLRule {
+  final val DESCRIPTION_MAX = 255
+  def apply(aclRuleInfo: ACLRuleInfo): ACLRule =
+    ACLRule(
+      aclRuleInfo.accessLevel,
+      aclRuleInfo.description,
+      aclRuleInfo.userId,
+      aclRuleInfo.groupId,
+      aclRuleInfo.recordMask,
+      aclRuleInfo.recordTypes)
+
 //  def build(
 //      accessLevel: AccessLevel,
 //      description: Option[String],
@@ -59,4 +58,4 @@ case class ACLRule(
 //      groupId.validNel[DomainValidationError],
 //      recordMask.validNel[DomainValidationError],
 //      validateKnownRecordTypes(recordTypes)).mapN(ACLRule.apply)
-//}
+}

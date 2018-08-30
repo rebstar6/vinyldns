@@ -35,9 +35,7 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 object DynamoDBRecordChangeRepository {
-  def apply(
-      config: Config = VinylDNSConfig.recordChangeStoreConfig,
-      dynamoConfig: Config = VinylDNSConfig.dynamoConfig): DynamoDBRecordChangeRepository =
+  def apply(config: Config, dynamoConfig: Config): DynamoDBRecordChangeRepository =
     new DynamoDBRecordChangeRepository(
       config,
       new DynamoDBHelper(
@@ -45,9 +43,7 @@ object DynamoDBRecordChangeRepository {
         LoggerFactory.getLogger("DynamoDBRecordChangeRepository")))
 }
 
-class DynamoDBRecordChangeRepository(
-    config: Config = VinylDNSConfig.recordChangeStoreConfig,
-    dynamoDBHelper: DynamoDBHelper)
+class DynamoDBRecordChangeRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
     extends RecordChangeRepository
     with ProtobufConversions
     with Monitored {

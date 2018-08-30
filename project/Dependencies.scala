@@ -15,7 +15,6 @@ object Dependencies {
   lazy val awsV = "1.11.95"
 
   lazy val compileDependencies = Seq(
-    "com.typesafe.akka"         %% "akka-http"                      % akkaHttpV,
     "com.typesafe.akka"         %% "akka-http-spray-json"           % akkaHttpV,
     "de.heikoseeberger"         %% "akka-http-json4s"               % "1.21.0",
     "com.typesafe.akka"         %% "akka-actor"                     % akkaV,
@@ -23,17 +22,13 @@ object Dependencies {
     "com.typesafe.akka"         %% "akka-slf4j"                     % akkaV,
     "ch.qos.logback"            %  "logback-classic"                % "1.0.7",
     "com.aaronbedra"            %  "orchard"                        % "0.1.1",
-    "com.amazonaws"             %  "aws-java-sdk-core"              % awsV withSources(),
-    "com.amazonaws"             %  "aws-java-sdk-dynamodb"          % awsV withSources(),
     "com.amazonaws"             % "aws-java-sdk-sqs"                % awsV withSources(),
     "com.github.ben-manes.caffeine" % "caffeine"                    % "2.2.7",
     "com.github.cb372"          %% "scalacache-caffeine"            % "0.9.4",
     "com.google.protobuf"       %  "protobuf-java"                  % "2.6.1",
     "com.zaxxer"                %  "HikariCP"                       % "2.5.1",
     "dnsjava"                   %  "dnsjava"                        % "2.1.7",
-    "joda-time"                 %  "joda-time"                      % "2.8.1",
     "org.mariadb.jdbc"          %  "mariadb-java-client"            % "2.2.3",
-    "nl.grons"                  %% "metrics-scala"                  % metricsScalaV,
     "org.apache.commons"        %  "commons-lang3"                  % "3.4",
     "org.flywaydb"              %  "flyway-core"                    % "5.1.4",
     "org.json4s"                %% "json4s-ext"                     % "3.5.3",
@@ -41,7 +36,6 @@ object Dependencies {
     "org.scalikejdbc"           %% "scalikejdbc"                    % "2.5.2",
     "org.scalikejdbc"           %% "scalikejdbc-config"             % "2.5.2",
     "org.scodec"                %% "scodec-bits"                    % scodecV,
-    "org.slf4j"                 %  "slf4j-api"                      % "1.7.7",
     "co.fs2"                    %% "fs2-core"                       % "0.10.5",
     "com.github.pureconfig"     %% "pureconfig"                     % pureConfigV,
     "com.github.pureconfig"     %% "pureconfig-cats-effect"         % pureConfigV,
@@ -56,6 +50,12 @@ object Dependencies {
   lazy val coreDependencies = Seq(
     "org.typelevel" %% "cats-effect"  % catsEffectV,
     "com.typesafe"  %  "config"       % configV,
+    "com.typesafe.akka"         %% "akka-http"                      % akkaHttpV,
+    "joda-time"                 %  "joda-time"                      % "2.8.1",
+    "com.amazonaws"             %  "aws-java-sdk-core"              % awsV withSources(),
+    "com.amazonaws"             %  "aws-java-sdk-dynamodb"          % awsV withSources(),
+    "nl.grons"                  %% "metrics-scala"                  % metricsScalaV,
+    "org.slf4j"                 %  "slf4j-api"                      % "1.7.7",
     "org.scodec"    %% "scodec-bits"  % scodecV,
     "org.scalatest" %% "scalatest"    % scalaTestV % "test"
   )

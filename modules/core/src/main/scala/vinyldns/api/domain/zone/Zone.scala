@@ -132,10 +132,10 @@ case class ZoneACL(rules: Set[ACLRule] = Set.empty) {
 
 case class ZoneConnection(name: String, keyName: String, key: String, primaryServer: String) {
 
-  def encrypted(crypto: CryptoAlgebra = Crypto.instance): ZoneConnection =
+  def encrypted(crypto: CryptoAlgebra): ZoneConnection =
     copy(key = crypto.encrypt(key))
 
-  def decrypted(crypto: CryptoAlgebra = Crypto.instance): ZoneConnection =
+  def decrypted(crypto: CryptoAlgebra): ZoneConnection =
     copy(key = crypto.decrypt(key))
 }
 

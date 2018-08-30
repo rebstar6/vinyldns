@@ -25,7 +25,6 @@ import com.amazonaws.services.dynamodbv2.model.{CreateTableRequest, Projection, 
 import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
-import vinyldns.api.VinylDNSConfig
 import vinyldns.api.domain.membership.GroupStatus.GroupStatus
 import vinyldns.api.domain.membership.{Group, GroupRepository, GroupStatus}
 import vinyldns.api.route.Monitored
@@ -34,9 +33,7 @@ import scala.collection.JavaConverters._
 
 object DynamoDBGroupRepository {
 
-  def apply(
-      config: Config = VinylDNSConfig.groupsStoreConfig,
-      dynamoConfig: Config = VinylDNSConfig.dynamoConfig): DynamoDBGroupRepository =
+  def apply(config: Config, dynamoConfig: Config): DynamoDBGroupRepository =
     new DynamoDBGroupRepository(
       config,
       new DynamoDBHelper(
@@ -44,9 +41,7 @@ object DynamoDBGroupRepository {
         LoggerFactory.getLogger(classOf[DynamoDBGroupRepository])))
 }
 
-class DynamoDBGroupRepository(
-    config: Config = VinylDNSConfig.groupsStoreConfig,
-    dynamoDBHelper: DynamoDBHelper)
+class DynamoDBGroupRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
     extends GroupRepository
     with Monitored {
 
@@ -87,9 +82,6 @@ class DynamoDBGroupRepository(
       .withGlobalSecondaryIndexes(secondaryIndexes: _*)
       .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
   )
-
-  def loadData: IO[List[Group]] = GroupRepository.loadTestData(this)
-  loadData.unsafeRunSync()
 
   def save(group: Group): IO[Group] =
     monitor("repo.Group.save") {

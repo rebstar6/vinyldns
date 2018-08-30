@@ -25,7 +25,6 @@ import com.amazonaws.services.dynamodbv2.model._
 import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
-import vinyldns.api.VinylDNSConfig
 import vinyldns.api.domain.membership.{ListUsersResults, User, UserRepository}
 import vinyldns.api.route.Monitored
 
@@ -33,9 +32,7 @@ import scala.collection.JavaConverters._
 
 object DynamoDBUserRepository {
 
-  def apply(
-      config: Config = VinylDNSConfig.usersStoreConfig,
-      dynamoConfig: Config = VinylDNSConfig.dynamoConfig): DynamoDBUserRepository =
+  def apply(config: Config, dynamoConfig: Config): DynamoDBUserRepository =
     new DynamoDBUserRepository(
       config,
       new DynamoDBHelper(
@@ -43,9 +40,7 @@ object DynamoDBUserRepository {
         LoggerFactory.getLogger("DynamoDBUserRepository")))
 }
 
-class DynamoDBUserRepository(
-    config: Config = VinylDNSConfig.usersStoreConfig,
-    dynamoDBHelper: DynamoDBHelper)
+class DynamoDBUserRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
     extends UserRepository
     with Monitored {
 
@@ -95,8 +90,8 @@ class DynamoDBUserRepository(
       .withGlobalSecondaryIndexes(secondaryIndexes: _*)
   )
 
-  // TODO: Loaders should not be inside these repos
-  UserRepository.loadTestData(this).unsafeRunSync()
+//  // TODO: Loaders should not be inside these repos
+//  UserRepository.loadTestData(this).unsafeRunSync()
 
   def getUser(userId: String): IO[Option[User]] =
     monitor("repo.User.getUser") {

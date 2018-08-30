@@ -22,7 +22,6 @@ import cats.effect._
 import com.amazonaws.services.dynamodbv2.model._
 import com.typesafe.config.Config
 import org.slf4j.{Logger, LoggerFactory}
-import vinyldns.api.VinylDNSConfig
 import vinyldns.api.domain.membership.MembershipRepository
 import vinyldns.api.route.Monitored
 
@@ -30,9 +29,7 @@ import scala.collection.JavaConverters._
 
 object DynamoDBMembershipRepository {
 
-  def apply(
-      config: Config = VinylDNSConfig.membershipStoreConfig,
-      dynamoConfig: Config = VinylDNSConfig.dynamoConfig): DynamoDBMembershipRepository =
+  def apply(config: Config, dynamoConfig: Config): DynamoDBMembershipRepository =
     new DynamoDBMembershipRepository(
       config,
       new DynamoDBHelper(
@@ -40,9 +37,7 @@ object DynamoDBMembershipRepository {
         LoggerFactory.getLogger("DynamoDBMembershipRepository")))
 }
 
-class DynamoDBMembershipRepository(
-    config: Config = VinylDNSConfig.membershipStoreConfig,
-    dynamoDBHelper: DynamoDBHelper)
+class DynamoDBMembershipRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
     extends MembershipRepository
     with Monitored {
 
@@ -70,12 +65,6 @@ class DynamoDBMembershipRepository(
         new KeySchemaElement(GROUP_ID, KeyType.RANGE))
       .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
   )
-
-  // TODO: These laoders should be taken out of the repositories
-  def loadData: IO[Set[Set[String]]] =
-    MembershipRepository.loadTestData(this)
-
-  loadData.unsafeRunSync()
 
   def getGroupsForUser(userId: String): IO[Set[String]] =
     monitor("repo.Membership.getGroupsForUser") {

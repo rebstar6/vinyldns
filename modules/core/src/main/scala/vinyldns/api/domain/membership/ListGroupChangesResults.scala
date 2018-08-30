@@ -16,22 +16,6 @@
 
 package vinyldns.api.domain.membership
 
-import cats.effect._
-import vinyldns.api.repository.Repository
-
-trait MembershipRepository extends Repository {
-
-  def addMembers(groupId: String, memberUserIds: Set[String]): IO[Set[String]]
-
-  def removeMembers(groupId: String, memberUserIds: Set[String]): IO[Set[String]]
-
-  def getGroupsForUser(userId: String): IO[Set[String]]
-}
-
-//object MembershipRepository {
-//  def apply(): MembershipRepository =
-//    DynamoDBMembershipRepository()
-//
-////  def loadTestData(repository: MembershipRepository): IO[Set[Set[String]]] =
-////    List("ok-group", "ok").map(repository.addMembers(_, Set("ok"))).parSequence.map(_.toSet)
-//}
+final case class ListGroupChangesResults(
+    changes: Seq[GroupChange],
+    lastEvaluatedTimeStamp: Option[String])

@@ -14,20 +14,10 @@
  * limitations under the License.
  */
 
-package vinyldns.api.domain.membership
+package vinyldns.api.domain
 
-import cats.effect._
-import org.joda.time.DateTime
-import vinyldns.api.repository.Repository
+object DomainHelpers {
 
-trait GroupChangeRepository extends Repository {
-  def save(groupChange: GroupChange): IO[GroupChange]
+  def ensureTrailingDot(str: String): String = if (str.endsWith(".")) str else s"$str."
 
-  def getGroupChange(groupChangeId: String): IO[Option[GroupChange]] // For testing
-  def getGroupChanges(
-      groupId: String,
-      startFrom: Option[String],
-      maxItems: Int): IO[ListGroupChangesResults]
-
-  implicit def dateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_.isBefore(_))
 }

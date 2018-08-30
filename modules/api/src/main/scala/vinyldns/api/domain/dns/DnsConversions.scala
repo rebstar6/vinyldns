@@ -22,7 +22,7 @@ import cats.syntax.either._
 import org.joda.time.DateTime
 import org.xbill.DNS
 import vinyldns.api.domain.dns.DnsProtocol._
-import vinyldns.api.domain.record
+import vinyldns.api.domain.{DomainHelpers, record}
 import vinyldns.api.domain.record.RecordType._
 import vinyldns.api.domain.record._
 
@@ -57,7 +57,7 @@ trait DnsConversions {
       name
     }
 
-  def ensureTrailingDot(str: String): String = if (str.endsWith(".")) str else s"$str."
+  def ensureTrailingDot(str: String): String = DomainHelpers.ensureTrailingDot(str)
 
   def getZoneFromNonApexFqdn(domainName: String): String =
     domainName.substring(domainName.indexOf(".") + 1)
