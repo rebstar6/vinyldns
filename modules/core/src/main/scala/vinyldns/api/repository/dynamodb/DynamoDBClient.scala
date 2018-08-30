@@ -20,11 +20,10 @@ import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBClient, AmazonDynamoDBClientBuilder}
 import com.typesafe.config.Config
-import vinyldns.api.VinylDNSConfig
 
 object DynamoDBClient {
 
-  def apply(config: Config = VinylDNSConfig.dynamoConfig): AmazonDynamoDBClient = {
+  def apply(config: Config): AmazonDynamoDBClient = {
     val dynamoAKID = config.getString("key")
     val dynamoSecret = config.getString("secret")
     val dynamoEndpoint = config.getString("endpoint")

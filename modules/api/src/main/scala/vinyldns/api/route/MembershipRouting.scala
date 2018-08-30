@@ -53,7 +53,7 @@ trait MembershipRoute extends Directives {
           monitor("Endpoint.createGroup") {
             entity(as[CreateGroupInput]) { input =>
               ifValid(Group
-                .build(input.name, input.email, input.description, input.members, input.admins)) {
+                .build(input.name, input.email, input.description, input.members.map(_.id), input.admins.map(_.id))) {
                 inputGroup: Group =>
                   execute(membershipService.createGroup(inputGroup, authPrincipal)) { group =>
                     complete(StatusCodes.OK, GroupInfo(group))
@@ -97,8 +97,8 @@ trait MembershipRoute extends Directives {
                   input.name,
                   input.email,
                   input.description,
-                  input.members,
-                  input.admins)) { inputGroup: Group =>
+                  input.members.map(_.id),
+                  input.admins.map(_.id))) { inputGroup: Group =>
                 execute(
                   membershipService.updateGroup(
                     inputGroup.id,

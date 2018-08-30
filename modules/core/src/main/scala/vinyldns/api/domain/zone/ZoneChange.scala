@@ -36,7 +36,6 @@ object ZoneChangeType extends Enumeration {
 import vinyldns.api.domain.zone.ZoneChangeStatus._
 import vinyldns.api.domain.zone.ZoneChangeType._
 
-trait ZoneCommandResult
 case class ZoneChange(
     zone: Zone,
     userId: String,

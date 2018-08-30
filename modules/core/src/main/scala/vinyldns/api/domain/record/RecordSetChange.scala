@@ -21,7 +21,7 @@ import java.util.UUID
 import org.joda.time.DateTime
 import vinyldns.api.domain.auth.AuthPrincipal
 import vinyldns.api.domain.dns.DnsConversions
-import vinyldns.api.domain.zone.{RecordSetChangeInfo, Zone, ZoneCommand, ZoneCommandResult}
+import vinyldns.api.domain.zone.{Zone, ZoneCommand, ZoneCommandResult}
 
 object RecordSetChangeStatus extends Enumeration {
   type RecordSetChangeStatus = Value
@@ -221,24 +221,4 @@ object RecordSetChange extends DnsConversions {
       updates = Some(recordSet),
       systemMessage = Some("Change applied via zone sync")
     )
-}
-
-case class ListRecordSetChangesResponse(
-    zoneId: String,
-    recordSetChanges: List[RecordSetChangeInfo] = Nil,
-    nextId: Option[String],
-    startFrom: Option[String],
-    maxItems: Int)
-
-object ListRecordSetChangesResponse {
-  def apply(
-      zoneId: String,
-      listResults: ListRecordSetChangesResults,
-      info: List[RecordSetChangeInfo]): ListRecordSetChangesResponse =
-    ListRecordSetChangesResponse(
-      zoneId,
-      info,
-      listResults.nextId,
-      listResults.startFrom,
-      listResults.maxItems)
 }

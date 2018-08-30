@@ -124,24 +124,4 @@ case class RecordSet(
 
     sb.toString
   }
-
-  def matches(right: RecordSet, zoneName: String): Boolean = {
-
-    val isSame = for {
-      thisDnsRec <- DnsConversions.toDnsRecords(this, zoneName)
-      otherDnsRec <- DnsConversions.toDnsRecords(right, zoneName)
-    } yield {
-      val rsMatch = otherDnsRec.toSet == thisDnsRec.toSet
-      val namesMatch = matchesNameQualification(right)
-      val headersMatch = this.ttl == right.ttl && this.typ == right.typ
-      rsMatch && namesMatch && headersMatch
-    }
-
-    isSame.getOrElse(false)
-  }
-
-  def matchesNameQualification(right: RecordSet): Boolean =
-    isFullyQualified(name) == isFullyQualified(right.name)
-
-  def isFullyQualified(name: String): Boolean = name.endsWith(".")
 }

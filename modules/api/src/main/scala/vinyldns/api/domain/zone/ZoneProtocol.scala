@@ -25,10 +25,6 @@ import vinyldns.api.domain.record.{RecordData, RecordSet, RecordSetChange}
 import vinyldns.api.domain.zone.AccessLevel.AccessLevel
 import vinyldns.api.domain.zone.ZoneStatus.ZoneStatus
 
-trait ZoneCommand {
-  val zoneId: String
-}
-
 case class ACLRuleInfo(
     accessLevel: AccessLevel,
     description: Option[String],

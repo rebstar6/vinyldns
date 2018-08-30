@@ -19,6 +19,7 @@ package vinyldns.api.domain.zone
 import vinyldns.api.domain.dns.DnsConversions._
 import vinyldns.api.domain
 import vinyldns.api.domain.record.{RecordSet, RecordSetChange}
+import vinyldns.api.domain.record.RecordSetHelpers._
 import vinyldns.api.domain.record.RecordType.RecordType
 
 object ZoneView {
@@ -53,7 +54,7 @@ case class ZoneView(zone: Zone, recordSetsMap: Map[(String, RecordType), RecordS
     def toUpdateRecordSetChange(newRecordSet: RecordSet, oldRecordSet: RecordSet): RecordSetChange =
       RecordSetChange.forSyncUpdate(oldRecordSet, newRecordSet, zone)
 
-    def areDifferent(left: RecordSet, right: RecordSet): Boolean = !left.matches(right, zone.name)
+    def areDifferent(left: RecordSet, right: RecordSet): Boolean = !matches(left, right, zone.name)
 
     def includeRecordSetIfChanged(key: (String, RecordType)): Option[RecordSetChange] =
       for {

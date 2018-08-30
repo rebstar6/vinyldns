@@ -17,6 +17,7 @@
 package vinyldns.api.repository
 
 import com.typesafe.config.Config
+import vinyldns.api.repository.RepositoryName.RepositoryName
 
 final case class DataStoreConfig(
     className: String,

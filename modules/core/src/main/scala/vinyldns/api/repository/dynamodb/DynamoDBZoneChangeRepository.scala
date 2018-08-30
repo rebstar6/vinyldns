@@ -51,7 +51,7 @@ object DynamoDBZoneChangeRepository extends ProtobufConversions {
 }
 
 class DynamoDBZoneChangeRepository(
-    config: Config = VinylDNSConfig.zoneChangeStoreConfig,
+    config: Config,
     dynamoDBHelper: DynamoDBHelper)
     extends ZoneChangeRepository
     with ProtobufConversions

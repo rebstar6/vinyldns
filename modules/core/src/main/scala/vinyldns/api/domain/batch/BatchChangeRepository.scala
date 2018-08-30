@@ -37,3 +37,4 @@ trait BatchChangeRepository extends Repository {
   def getSingleChanges(singleChangeIds: List[String]): IO[List[SingleChange]]
 
 }
+// $COVERAGE-ON$

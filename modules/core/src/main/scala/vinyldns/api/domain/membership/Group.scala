@@ -18,6 +18,9 @@ package vinyldns.api.domain.membership
 
 import java.util.UUID
 
+import org.joda.time.DateTime
+import vinyldns.api.domain.auth.AuthPrincipal
+
 object GroupStatus extends Enumeration {
   type GroupStatus = Value
   val Active, Deleted = Value
@@ -84,29 +87,29 @@ object Group {
       name: String,
       email: String,
       description: Option[String],
-      memberIds: Set[UserInfo],
-      adminUserIds: Set[UserInfo]): ValidatedNel[String, Group] =
+      members: Set[String],
+      admins: Set[String]): ValidatedNel[String, Group] =
     Group(
       name,
       email,
       description,
-      memberIds = memberIds.map(_.id) ++ adminUserIds.map(_.id),
-      adminUserIds = adminUserIds.map(_.id)).validNel[String]
+      memberIds = members ++ admins,
+      adminUserIds = admins).validNel[String]
 
   def build(
       id: String,
       name: String,
       email: String,
       description: Option[String],
-      memberIds: Set[UserInfo],
-      adminUserIds: Set[UserInfo]): ValidatedNel[String, Group] =
+      members: Set[String],
+      admins: Set[String]): ValidatedNel[String, Group] =
     Group(
       name,
       email,
       description,
       id,
-      memberIds = memberIds.map(_.id) ++ adminUserIds.map(_.id),
-      adminUserIds = adminUserIds.map(_.id)).validNel[String]
+      memberIds = members ++ admins,
+      adminUserIds = admins).validNel[String]
 }
 
 object GroupChangeType extends Enumeration {

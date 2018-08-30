@@ -18,11 +18,7 @@ package vinyldns.api.domain.zone
 
 import java.util.UUID
 
-import cats.implicits._, cats.data._
 import org.joda.time.DateTime
-import vinyldns.api.domain.DomainValidations._
-import vinyldns.api.domain.{DomainValidationError, zone}
-import vinyldns.api.domain.ValidationImprovements._
 import vinyldns.core.crypto.{Crypto, CryptoAlgebra}
 
 object ZoneStatus extends Enumeration {
@@ -72,50 +68,50 @@ case class Zone(
     sb.toString
   }
 }
-
-object Zone {
-  val ZONE_MIN_LENGTH = 2 // Smaller of valid host name or IP address
-  val ZONE_MAX_LENGTH = 255
-  def build(
-      name: String,
-      email: String,
-      adminGroupId: String,
-      connection: Option[ZoneConnection],
-      transfer: Option[ZoneConnection],
-      zoneAcl: Option[ZoneACL]): ValidatedNel[DomainValidationError, Zone] =
-    (
-      validateZoneName(name),
-      validateEmail(email),
-      adminGroupId.validNel,
-      validateZoneConnection(connection),
-      validateZoneConnection(transfer),
-      validateZoneAcl(zoneAcl)).mapN { (nm, em, ag, cn, tr, za) =>
-      Zone(
-        name = nm,
-        email = em,
-        adminGroupId = ag,
-        connection = cn,
-        transferConnection = tr,
-        acl = za.getOrElse(ZoneACL())
-      )
-    }
-
-  def validateZoneName(name: String): ValidatedNel[DomainValidationError, String] =
-    validateStringLength(name, Some(ZONE_MIN_LENGTH), ZONE_MAX_LENGTH)
-      .combine(validateTrailingDot(name))
-      .map(_ => name)
-
-  def validateZoneConnection(connection: Option[ZoneConnection])
-    : ValidatedNel[DomainValidationError, Option[ZoneConnection]] =
-    validateIfDefined(connection) { c =>
-      ZoneConnection.build(c.name, c.keyName, c.key, c.primaryServer)
-    }
-
-  def validateZoneAcl(acl: Option[ZoneACL]): ValidatedNel[DomainValidationError, Option[ZoneACL]] =
-    validateIfDefined(acl) { acl =>
-      ZoneACL.build(acl.rules)
-    }
-}
+//
+//object Zone {
+//  val ZONE_MIN_LENGTH = 2 // Smaller of valid host name or IP address
+//  val ZONE_MAX_LENGTH = 255
+//  def build(
+//      name: String,
+//      email: String,
+//      adminGroupId: String,
+//      connection: Option[ZoneConnection],
+//      transfer: Option[ZoneConnection],
+//      zoneAcl: Option[ZoneACL]): ValidatedNel[DomainValidationError, Zone] =
+//    (
+//      validateZoneName(name),
+//      validateEmail(email),
+//      adminGroupId.validNel,
+//      validateZoneConnection(connection),
+//      validateZoneConnection(transfer),
+//      validateZoneAcl(zoneAcl)).mapN { (nm, em, ag, cn, tr, za) =>
+//      Zone(
+//        name = nm,
+//        email = em,
+//        adminGroupId = ag,
+//        connection = cn,
+//        transferConnection = tr,
+//        acl = za.getOrElse(ZoneACL())
+//      )
+//    }
+//
+//  def validateZoneName(name: String): ValidatedNel[DomainValidationError, String] =
+//    validateStringLength(name, Some(ZONE_MIN_LENGTH), ZONE_MAX_LENGTH)
+//      .combine(validateTrailingDot(name))
+//      .map(_ => name)
+//
+//  def validateZoneConnection(connection: Option[ZoneConnection])
+//    : ValidatedNel[DomainValidationError, Option[ZoneConnection]] =
+//    validateIfDefined(connection) { c =>
+//      ZoneConnection.build(c.name, c.keyName, c.key, c.primaryServer)
+//    }
+//
+//  def validateZoneAcl(acl: Option[ZoneACL]): ValidatedNel[DomainValidationError, Option[ZoneACL]] =
+//    validateIfDefined(acl) { acl =>
+//      ZoneACL.build(acl.rules)
+//    }
+//}
 
 case class ZoneACL(rules: Set[ACLRule] = Set.empty) {
 
@@ -124,15 +120,15 @@ case class ZoneACL(rules: Set[ACLRule] = Set.empty) {
   def deleteRule(rule: ACLRule): ZoneACL = copy(rules = rules - rule)
 }
 
-object ZoneACL {
-  def build(rules: Set[ACLRule]): ValidatedNel[DomainValidationError, ZoneACL] =
-    rules.toList
-      .traverse(
-        r =>
-          ACLRule
-            .build(r.accessLevel, r.description, r.userId, r.groupId, r.recordMask, r.recordTypes))
-      .map(x => zone.ZoneACL(x.toSet[ACLRule]))
-}
+//object ZoneACL {
+//  def build(rules: Set[ACLRule]): ValidatedNel[DomainValidationError, ZoneACL] =
+//    rules.toList
+//      .traverse(
+//        r =>
+//          ACLRule
+//            .build(r.accessLevel, r.description, r.userId, r.groupId, r.recordMask, r.recordTypes))
+//      .map(x => zone.ZoneACL(x.toSet[ACLRule]))
+//}
 
 case class ZoneConnection(name: String, keyName: String, key: String, primaryServer: String) {
 
@@ -143,38 +139,38 @@ case class ZoneConnection(name: String, keyName: String, key: String, primarySer
     copy(key = crypto.decrypt(key))
 }
 
-object ZoneConnection {
-
-  final val ZONE_CONNECTION_MIN = 1
-  final val ZONE_CONNECTION_MAX = 255
-  def build(
-      name: String,
-      keyName: String,
-      key: String,
-      primaryServer: String): ValidatedNel[DomainValidationError, ZoneConnection] =
-    (
-      validateStringLength(name, Some(ZONE_CONNECTION_MIN), ZONE_CONNECTION_MAX),
-      keyName.validNel,
-      key.validNel,
-      validateHostServer(primaryServer)
-    ).mapN(ZoneConnection.apply)
-
-  def validateHostServer(host: String): ValidatedNel[DomainValidationError, String] = {
-    val splitHosts = host.split(":") // First part is host name or IPv4
-
-    val checkDomainName = validateHostName(splitHosts(0))
-    val checkIpv4 = validateIpv4Address(splitHosts(0))
-    val checkPort = if (splitHosts.length == 1) "".validNel else validatePort(splitHosts(1))
-
-    /*
-     This is a little hard to follow:
-
-     If it is either a valid domain name OR valid IP address and the port is valid, then return success.
-     Otherwise, return any failures. If neither the domain name or IP address are valid, both failures will be returned.
-
-     Note: We use the `.map(_ => ...)` convention here to return the original string upon success since the +++ operator
-     appends Successes and Failures if both are of the same type.
-     */
-    checkDomainName.findValid(checkIpv4).combine(checkPort).map(_ => host)
-  }
-}
+//object ZoneConnection {
+//
+//  final val ZONE_CONNECTION_MIN = 1
+//  final val ZONE_CONNECTION_MAX = 255
+//  def build(
+//      name: String,
+//      keyName: String,
+//      key: String,
+//      primaryServer: String): ValidatedNel[DomainValidationError, ZoneConnection] =
+//    (
+//      validateStringLength(name, Some(ZONE_CONNECTION_MIN), ZONE_CONNECTION_MAX),
+//      keyName.validNel,
+//      key.validNel,
+//      validateHostServer(primaryServer)
+//    ).mapN(ZoneConnection.apply)
+//
+//  def validateHostServer(host: String): ValidatedNel[DomainValidationError, String] = {
+//    val splitHosts = host.split(":") // First part is host name or IPv4
+//
+//    val checkDomainName = validateHostName(splitHosts(0))
+//    val checkIpv4 = validateIpv4Address(splitHosts(0))
+//    val checkPort = if (splitHosts.length == 1) "".validNel else validatePort(splitHosts(1))
+//
+//    /*
+//     This is a little hard to follow:
+//
+//     If it is either a valid domain name OR valid IP address and the port is valid, then return success.
+//     Otherwise, return any failures. If neither the domain name or IP address are valid, both failures will be returned.
+//
+//     Note: We use the `.map(_ => ...)` convention here to return the original string upon success since the +++ operator
+//     appends Successes and Failures if both are of the same type.
+//     */
+//    checkDomainName.findValid(checkIpv4).combine(checkPort).map(_ => host)
+//  }
+//}
