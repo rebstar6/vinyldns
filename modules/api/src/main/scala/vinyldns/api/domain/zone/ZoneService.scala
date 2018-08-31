@@ -22,6 +22,7 @@ import vinyldns.api.domain.AccessValidationAlgebra
 import vinyldns.api.domain.auth.AuthPrincipal
 import vinyldns.api.domain.engine.EngineCommandBus
 import vinyldns.api.domain.membership.{Group, GroupRepository, User, UserRepository}
+import vinyldns.core.crypto.Crypto
 
 class ZoneService(
     zoneRepository: ZoneRepository,
@@ -56,7 +57,8 @@ class ZoneService(
       _ <- canChangeZone(auth, existingZone).toResult
       _ <- adminGroupExists(newZone.adminGroupId)
       _ <- userIsMemberOfGroup(newZone.adminGroupId, auth).toResult
-      updateZoneChange <- ZoneChange.forUpdate(newZone, existingZone, auth).toResult
+      fixedConnection = fixConn(existingZone, newZone)
+      updateZoneChange <- ZoneChange.forUpdate(newZone, fixedConnection, auth).toResult
       send <- commandBus.sendZoneCommand(updateZoneChange)
     } yield send
 
@@ -139,7 +141,7 @@ class ZoneService(
       zoneChange <- ZoneChange
         .forUpdate(
           newZone = zone.addACLRule(newRule),
-          oldZone = zone,
+          connection = zone.connection,
           authPrincipal = authPrincipal
         )
         .toResult
@@ -158,7 +160,7 @@ class ZoneService(
       zoneChange <- ZoneChange
         .forUpdate(
           newZone = zone.deleteACLRule(newRule),
-          oldZone = zone,
+          connection = zone.connection,
           authPrincipal = authPrincipal
         )
         .toResult
@@ -227,4 +229,12 @@ class ZoneService(
       }
     } yield ZoneACLInfo(ruleInfos.filter(_.displayName.isDefined))
   }
+
+  private def fixConn(oldZ: Zone, newZ: Zone): Option[ZoneConnection] =
+    newZ.connection.map(newConn => {
+      val oldConn = oldZ.connection.getOrElse(newConn)
+      newConn.copy(
+        key =
+          if (oldConn.key == newConn.decrypted(Crypto.instance).key) oldConn.key else newConn.key)
+    })
 }

@@ -17,24 +17,21 @@
 package vinyldns.api.domain.membership
 
 import cats.effect._
-import org.joda.time.DateTime
 import vinyldns.api.repository.Repository
-import vinyldns.api.repository.dynamodb.DynamoDBGroupChangeRepository
 
-final case class ListGroupChangesResults(
-    changes: Seq[GroupChange],
-    lastEvaluatedTimeStamp: Option[String])
+final case class ListUsersResults(users: Seq[User], lastEvaluatedId: Option[String])
 
-trait GroupChangeRepository extends Repository {
-  def save(groupChange: GroupChange): IO[GroupChange]
-  def getGroupChange(groupChangeId: String): IO[Option[GroupChange]] // For testing
-  def getGroupChanges(
-      groupId: String,
-      startFrom: Option[String],
-      maxItems: Int): IO[ListGroupChangesResults]
-  implicit def dateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_.isBefore(_))
-}
+trait UserRepository extends Repository {
 
-object GroupChangeRepository {
-  def apply(): GroupChangeRepository = DynamoDBGroupChangeRepository()
+  /*Looks up a user.  If the user is not found, or if the user's status is Deleted, will return None */
+  def getUser(userId: String): IO[Option[User]]
+
+  def getUsers(
+      userIds: Set[String],
+      exclusiveStartKey: Option[String],
+      pageSize: Option[Int]): IO[ListUsersResults]
+
+  def getUserByAccessKey(accessKey: String): IO[Option[User]]
+
+  def save(user: User): IO[User]
 }

@@ -293,7 +293,7 @@ class ZoneRoutingSpec
             ZoneChange
               .forUpdate(
                 ok.addACLRule(newRule),
-                ok,
+                ok.connection,
                 authPrincipal
               )
               .copy(status = ZoneChangeStatus.Complete)
@@ -316,7 +316,7 @@ class ZoneRoutingSpec
             ZoneChange
               .forUpdate(
                 ok.deleteACLRule(rule),
-                ok,
+                ok.connection,
                 authPrincipal
               )
               .copy(status = ZoneChangeStatus.Complete)

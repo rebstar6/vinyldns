@@ -16,12 +16,8 @@
 
 package vinyldns.api.domain.zone
 
-import cats.data._
-import cats.implicits._
 import AccessLevel.AccessLevel
 import vinyldns.api.domain.record.RecordType.RecordType
-import vinyldns.api.domain.DomainValidations._
-import vinyldns.api.domain.{DomainValidationError, zone}
 
 object AccessLevel extends Enumeration {
   type AccessLevel = Value
@@ -40,7 +36,7 @@ case class ACLRule(
 object ACLRule {
   final val DESCRIPTION_MAX = 255
   def apply(aclRuleInfo: ACLRuleInfo): ACLRule =
-    zone.ACLRule(
+    ACLRule(
       aclRuleInfo.accessLevel,
       aclRuleInfo.description,
       aclRuleInfo.userId,
@@ -48,18 +44,18 @@ object ACLRule {
       aclRuleInfo.recordMask,
       aclRuleInfo.recordTypes)
 
-  def build(
-      accessLevel: AccessLevel,
-      description: Option[String],
-      userId: Option[String],
-      groupId: Option[String],
-      recordMask: Option[String],
-      recordTypes: Set[RecordType]): ValidatedNel[DomainValidationError, ACLRule] =
-    (
-      accessLevel.validNel[DomainValidationError],
-      validateStringLength(description, None, DESCRIPTION_MAX),
-      userId.validNel[DomainValidationError],
-      groupId.validNel[DomainValidationError],
-      recordMask.validNel[DomainValidationError],
-      validateKnownRecordTypes(recordTypes)).mapN(ACLRule.apply)
+//  def build(
+//      accessLevel: AccessLevel,
+//      description: Option[String],
+//      userId: Option[String],
+//      groupId: Option[String],
+//      recordMask: Option[String],
+//      recordTypes: Set[RecordType]): ValidatedNel[DomainValidationError, ACLRule] =
+//    (
+//      accessLevel.validNel[DomainValidationError],
+//      validateStringLength(description, None, DESCRIPTION_MAX),
+//      userId.validNel[DomainValidationError],
+//      groupId.validNel[DomainValidationError],
+//      recordMask.validNel[DomainValidationError],
+//      validateKnownRecordTypes(recordTypes)).mapN(ACLRule.apply)
 }

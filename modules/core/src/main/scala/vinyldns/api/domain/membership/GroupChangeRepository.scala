@@ -14,27 +14,20 @@
  * limitations under the License.
  */
 
-package vinyldns.api.domain.batch
+package vinyldns.api.domain.membership
 
 import cats.effect._
+import org.joda.time.DateTime
 import vinyldns.api.repository.Repository
 
-// $COVERAGE-OFF$
-trait BatchChangeRepository extends Repository {
+trait GroupChangeRepository extends Repository {
+  def save(groupChange: GroupChange): IO[GroupChange]
 
-  def save(batch: BatchChange): IO[BatchChange]
+  def getGroupChange(groupChangeId: String): IO[Option[GroupChange]] // For testing
+  def getGroupChanges(
+      groupId: String,
+      startFrom: Option[String],
+      maxItems: Int): IO[ListGroupChangesResults]
 
-  def getBatchChange(batchChangeId: String): IO[Option[BatchChange]]
-
-  def getBatchChangeSummariesByUserId(
-      userId: String,
-      startFrom: Option[Int] = None,
-      maxItems: Int = 100): IO[BatchChangeSummaryList]
-
-  // updateSingleChanges updates status, recordSetId, recordChangeId and systemMessage (in data).
-  def updateSingleChanges(singleChanges: List[SingleChange]): IO[List[SingleChange]]
-
-  def getSingleChanges(singleChangeIds: List[String]): IO[List[SingleChange]]
-
+  implicit def dateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_.isBefore(_))
 }
-// $COVERAGE-ON$

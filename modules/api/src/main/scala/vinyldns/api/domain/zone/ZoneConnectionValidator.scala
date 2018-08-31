@@ -23,7 +23,7 @@ import vinyldns.api.Interfaces._
 import vinyldns.api.VinylDNSConfig
 import vinyldns.api.domain.dns.DnsConnection
 import vinyldns.api.domain.dns.DnsProtocol.{NameNotFound, RecordSetNotFound}
-import vinyldns.api.domain.record.{RecordSet, RecordSetChange, RecordSetStatus, RecordType, TXTData}
+import vinyldns.api.domain.record._
 
 import scala.concurrent.duration._
 
@@ -81,7 +81,7 @@ class ZoneConnectionValidator(defaultConnection: ZoneConnection)
 
     val result = for {
       _ <- dnsConnection
-        .applyChange(RecordSetChange.forDelete(rs, zone))
+        .applyChange(RecordSetChangeGenerator.forDelete(rs, zone))
         .as(())
         .recover {
           case _: RecordSetNotFound | _: NameNotFound => ()

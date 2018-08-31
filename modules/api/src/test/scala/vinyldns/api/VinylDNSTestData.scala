@@ -20,13 +20,14 @@ import java.util.UUID
 
 import org.joda.time.DateTime
 import vinyldns.api.domain.auth.AuthPrincipal
-import vinyldns.api.domain.membership.{Group, User, UserRepository}
+import vinyldns.api.domain.membership.{Group, User}
 import vinyldns.api.domain.record._
 import vinyldns.api.domain.zone._
+import vinyldns.api.repository.TestDataLoader
 
 trait VinylDNSTestData {
 
-  val usr: User = UserRepository.okUser
+  val usr: User = TestDataLoader.okUser
   val grp: Group = Group(
     "ok",
     "test@test.com",
@@ -34,8 +35,8 @@ trait VinylDNSTestData {
     memberIds = Set(usr.id),
     adminUserIds = Set(usr.id),
     created = DateTime.now.secondOfDay().roundFloorCopy())
-  val okAuth: AuthPrincipal = AuthPrincipal(UserRepository.okUser, Seq(grp.id))
-  val notAuth: AuthPrincipal = AuthPrincipal(UserRepository.dummyUser, Seq.empty)
+  val okAuth: AuthPrincipal = AuthPrincipal(TestDataLoader.okUser, Seq(grp.id))
+  val notAuth: AuthPrincipal = AuthPrincipal(TestDataLoader.dummyUser, Seq.empty)
 
   val testZoneConnection: ZoneConnection = ZoneConnection(
     "vinyldns.",
@@ -227,15 +228,17 @@ trait VinylDNSTestData {
     None,
     List(AAAAData("1:2:3:4:5:6:7:8")))
 
-  val pendingCreateAAAA: RecordSetChange = RecordSetChange.forAdd(aaaa, zoneActive, okAuth)
-  val pendingCreateCNAME: RecordSetChange = RecordSetChange.forAdd(cname, zoneActive, okAuth)
+  val pendingCreateAAAA: RecordSetChange = RecordSetChangeGenerator.forAdd(aaaa, zoneActive, okAuth)
+  val pendingCreateCNAME: RecordSetChange =
+    RecordSetChangeGenerator.forAdd(cname, zoneActive, okAuth)
   val pendingChangeSet: ChangeSet = ChangeSet(Seq(pendingCreateAAAA, pendingCreateCNAME))
-  val pendingCreateNS: RecordSetChange = RecordSetChange.forAdd(ns, zoneActive, okAuth)
+  val pendingCreateNS: RecordSetChange = RecordSetChangeGenerator.forAdd(ns, zoneActive, okAuth)
 
   val aaaaUpdated: RecordSet = aaaa.copy(ttl = aaaa.ttl + 100)
   val pendingUpdateAAAA: RecordSetChange =
-    RecordSetChange.forUpdate(aaaa, aaaaUpdated, zoneActive, okAuth)
-  val pendingDeleteAAAA: RecordSetChange = RecordSetChange.forDelete(aaaa, zoneActive, okAuth)
+    RecordSetChangeGenerator.forUpdate(aaaa, aaaaUpdated, zoneActive, okAuth)
+  val pendingDeleteAAAA: RecordSetChange =
+    RecordSetChangeGenerator.forDelete(aaaa, zoneActive, okAuth)
   val completeCreateAAAA: RecordSetChange =
     pendingCreateAAAA.copy(status = RecordSetChangeStatus.Complete)
   val completeCreateCNAME: RecordSetChange =

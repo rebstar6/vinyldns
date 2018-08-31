@@ -17,9 +17,7 @@
 package vinyldns.api.domain.membership
 
 import cats.effect._
-import cats.implicits._
 import vinyldns.api.repository.Repository
-import vinyldns.api.repository.dynamodb.DynamoDBMembershipRepository
 
 trait MembershipRepository extends Repository {
 
@@ -30,10 +28,10 @@ trait MembershipRepository extends Repository {
   def getGroupsForUser(userId: String): IO[Set[String]]
 }
 
-object MembershipRepository {
-  def apply(): MembershipRepository =
-    DynamoDBMembershipRepository()
-
-  def loadTestData(repository: MembershipRepository): IO[Set[Set[String]]] =
-    List("ok-group", "ok").map(repository.addMembers(_, Set("ok"))).parSequence.map(_.toSet)
-}
+//object MembershipRepository {
+//  def apply(): MembershipRepository =
+//    DynamoDBMembershipRepository()
+//
+////  def loadTestData(repository: MembershipRepository): IO[Set[Set[String]]] =
+////    List("ok-group", "ok").map(repository.addMembers(_, Set("ok"))).parSequence.map(_.toSet)
+//}

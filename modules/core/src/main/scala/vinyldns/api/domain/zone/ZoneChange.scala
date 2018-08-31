@@ -36,7 +36,6 @@ object ZoneChangeType extends Enumeration {
 import vinyldns.api.domain.zone.ZoneChangeStatus._
 import vinyldns.api.domain.zone.ZoneChangeType._
 
-trait ZoneCommandResult
 case class ZoneChange(
     zone: Zone,
     userId: String,
@@ -80,9 +79,12 @@ object ZoneChange {
       status
     )
 
-  def forUpdate(newZone: Zone, oldZone: Zone, authPrincipal: AuthPrincipal): ZoneChange =
+  def forUpdate(
+      newZone: Zone,
+      connection: Option[ZoneConnection],
+      authPrincipal: AuthPrincipal): ZoneChange =
     ZoneChange(
-      newZone.copy(updated = Some(DateTime.now), connection = fixConn(oldZone, newZone)),
+      newZone.copy(updated = Some(DateTime.now), connection = connection),
       authPrincipal.userId,
       ZoneChangeType.Update,
       ZoneChangeStatus.Pending
@@ -104,11 +106,14 @@ object ZoneChange {
       ZoneChangeStatus.Pending
     )
 
-  private def fixConn(oldZ: Zone, newZ: Zone): Option[ZoneConnection] =
-    newZ.connection.map(newConn => {
-      val oldConn = oldZ.connection.getOrElse(newConn)
-      newConn.copy(key = if (oldConn.key == newConn.decrypted().key) oldConn.key else newConn.key)
-    })
+//  private def fixConn(oldZ: Zone, newZ: Zone): Option[ZoneConnection] = {
+//    val newC = newZ.connection
+//
+//    newZ.connection.map(newConn => {
+//      val oldConn = oldZ.connection.getOrElse(newConn)
+//      newConn.copy(key = if (oldConn.key == newConn.decrypted(Crypto.instance).key) oldConn.key else newConn.key)
+//    })
+//  }
 }
 
 case class ZoneHistory(
