@@ -22,11 +22,12 @@ import cats.effect._
 import nl.grons.metrics.scala.{Histogram, Meter, MetricName}
 import org.slf4j.{Logger, LoggerFactory}
 import vinyldns.api.Instrumented
+import vinyldns.core.MonitoredAlgebra
 
 import scala.collection._
 import scala.util.Failure
 
-trait Monitored {
+trait Monitored extends MonitoredAlgebra {
 
   def monitor[T](name: String)(f: => IO[T]): IO[T] = {
     val startTime = System.currentTimeMillis()
@@ -63,6 +64,8 @@ trait Monitored {
   /* Separate function makes it easier to test */
   private[route] def getMonitor(name: String) = Monitor(name)
 }
+
+object VinylDNSMonitor extends Monitored
 
 /**
   * Holds a set of monitors that are used to monitor the traffic into the API

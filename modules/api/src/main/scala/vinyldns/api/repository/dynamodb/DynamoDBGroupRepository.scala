@@ -28,7 +28,8 @@ import org.slf4j.{Logger, LoggerFactory}
 import vinyldns.api.VinylDNSConfig
 import vinyldns.core.domain.membership.GroupStatus.GroupStatus
 import vinyldns.core.domain.membership.{Group, GroupRepository, GroupStatus}
-import vinyldns.api.route.Monitored
+import vinyldns.api.route.VinylDNSMonitor
+import vinyldns.core.MonitoredAlgebra
 
 import scala.collection.JavaConverters._
 
@@ -41,14 +42,18 @@ object DynamoDBGroupRepository {
       config,
       new DynamoDBHelper(
         DynamoDBClient(dynamoConfig),
-        LoggerFactory.getLogger(classOf[DynamoDBGroupRepository])))
+        LoggerFactory.getLogger(classOf[DynamoDBGroupRepository])),
+      VinylDNSMonitor
+    )
 }
 
 class DynamoDBGroupRepository(
     config: Config = VinylDNSConfig.groupsStoreConfig,
-    dynamoDBHelper: DynamoDBHelper)
-    extends GroupRepository
-    with Monitored {
+    dynamoDBHelper: DynamoDBHelper,
+    monitoredAlgebra: MonitoredAlgebra)
+    extends GroupRepository {
+
+  import monitoredAlgebra.monitor
 
   val log: Logger = LoggerFactory.getLogger(classOf[DynamoDBGroupRepository])
 

@@ -27,7 +27,8 @@ import org.slf4j.{Logger, LoggerFactory}
 import vinyldns.api.VinylDNSConfig
 import vinyldns.core.domain.membership.{GroupChange, GroupChangeRepository, ListGroupChangesResults}
 import vinyldns.core.protobuf.GroupProtobufConversions
-import vinyldns.api.route.Monitored
+import vinyldns.api.route.VinylDNSMonitor
+import vinyldns.core.MonitoredAlgebra
 import vinyldns.proto.VinylDNSProto
 
 import scala.collection.JavaConverters._
@@ -41,15 +42,18 @@ object DynamoDBGroupChangeRepository {
       config,
       new DynamoDBHelper(
         DynamoDBClient(dynamoConfig),
-        LoggerFactory.getLogger(classOf[DynamoDBGroupChangeRepository])))
+        LoggerFactory.getLogger(classOf[DynamoDBGroupChangeRepository])),
+      VinylDNSMonitor)
 }
 
 class DynamoDBGroupChangeRepository(
     config: Config = VinylDNSConfig.groupChangesStoreConfig,
-    dynamoDBHelper: DynamoDBHelper)
+    dynamoDBHelper: DynamoDBHelper,
+    monitoredAlgebra: MonitoredAlgebra)
     extends GroupChangeRepository
-    with Monitored
     with GroupProtobufConversions {
+
+  import monitoredAlgebra.monitor
 
   val log: Logger = LoggerFactory.getLogger(classOf[DynamoDBGroupChangeRepository])
 
