@@ -25,11 +25,11 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
 import com.amazonaws.services.dynamodbv2.model._
 import com.amazonaws.services.dynamodbv2.util.TableUtils
 import org.slf4j.Logger
-import vinyldns.api.VinylDNSMetrics
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import com.codahale.metrics.MetricRegistry
 
 private class RetryStateHolder(var retries: Int = 10, var backoff: FiniteDuration = 1.millis)
 
@@ -44,18 +44,18 @@ trait DynamoUtils {
 }
 
 /* Used to provide an exponential backoff in the event of a Provisioned Throughput Exception */
-class DynamoDBHelper(dynamoDB: AmazonDynamoDBClient, log: Logger) {
+class DynamoDBHelper(dynamoDB: AmazonDynamoDBClient, log: Logger, metricRegistry: MetricRegistry) {
 
   private[repository] val retryCount: Int = 10
   private val retryBackoff: FiniteDuration = 1.millis
 
   private[repository] val provisionedThroughputMeter =
-    VinylDNSMetrics.metricsRegistry.meter("dynamo.provisionedThroughput")
+    metricRegistry.meter("dynamo.provisionedThroughput")
   private[repository] val retriesExceededMeter =
-    VinylDNSMetrics.metricsRegistry.meter("dynamo.retriesExceeded")
+    metricRegistry.meter("dynamo.retriesExceeded")
   private[repository] val dynamoUnexpectedFailuresMeter =
-    VinylDNSMetrics.metricsRegistry.meter("dynamo.unexpectedFailure")
-  private[repository] val callRateMeter = VinylDNSMetrics.metricsRegistry.meter("dynamo.callRate")
+    metricRegistry.meter("dynamo.unexpectedFailure")
+  private[repository] val callRateMeter = metricRegistry.meter("dynamo.callRate")
   private[repository] val dynamoUtils = new DynamoUtils {
     def waitUntilActive(dynamoDB: AmazonDynamoDBClient, tableName: String): Unit =
       TableUtils.waitUntilActive(dynamoDB, tableName)

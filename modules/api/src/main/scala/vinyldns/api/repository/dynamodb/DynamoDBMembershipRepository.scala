@@ -22,9 +22,10 @@ import cats.effect._
 import com.amazonaws.services.dynamodbv2.model._
 import com.typesafe.config.Config
 import org.slf4j.{Logger, LoggerFactory}
-import vinyldns.api.VinylDNSConfig
+import vinyldns.api.{VinylDNSConfig, VinylDNSMetrics}
 import vinyldns.core.domain.membership.MembershipRepository
-import vinyldns.api.route.Monitored
+import vinyldns.api.route.{Monitored, VinylDNSMonitor}
+import vinyldns.core.MonitoredAlgebra
 
 import scala.collection.JavaConverters._
 
@@ -37,14 +38,19 @@ object DynamoDBMembershipRepository {
       config,
       new DynamoDBHelper(
         DynamoDBClient(dynamoConfig),
-        LoggerFactory.getLogger("DynamoDBMembershipRepository")))
+        LoggerFactory.getLogger("DynamoDBMembershipRepository"),
+        VinylDNSMetrics.metricsRegistry),
+      VinylDNSMonitor
+    )
 }
 
 class DynamoDBMembershipRepository(
     config: Config = VinylDNSConfig.membershipStoreConfig,
-    dynamoDBHelper: DynamoDBHelper)
-    extends MembershipRepository
-    with Monitored {
+    dynamoDBHelper: DynamoDBHelper,
+    monitoredAlgebra: MonitoredAlgebra)
+    extends MembershipRepository {
+
+  import monitoredAlgebra.monitor
 
   val log: Logger = LoggerFactory.getLogger("DynamoDBMembershipRepository")
 

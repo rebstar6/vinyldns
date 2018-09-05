@@ -25,7 +25,7 @@ import com.amazonaws.services.dynamodbv2.model.{CreateTableRequest, Projection, 
 import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
-import vinyldns.api.VinylDNSConfig
+import vinyldns.api.{VinylDNSConfig, VinylDNSMetrics}
 import vinyldns.core.domain.membership.GroupStatus.GroupStatus
 import vinyldns.core.domain.membership.{Group, GroupRepository, GroupStatus}
 import vinyldns.api.route.VinylDNSMonitor
@@ -42,7 +42,8 @@ object DynamoDBGroupRepository {
       config,
       new DynamoDBHelper(
         DynamoDBClient(dynamoConfig),
-        LoggerFactory.getLogger(classOf[DynamoDBGroupRepository])),
+        LoggerFactory.getLogger(classOf[DynamoDBGroupRepository]),
+        VinylDNSMetrics.metricsRegistry),
       VinylDNSMonitor
     )
 }

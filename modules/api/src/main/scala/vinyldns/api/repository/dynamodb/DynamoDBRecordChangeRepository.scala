@@ -25,11 +25,12 @@ import com.amazonaws.services.dynamodbv2.model._
 import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
-import vinyldns.api.VinylDNSConfig
+import vinyldns.api.{VinylDNSConfig, VinylDNSMetrics}
 import vinyldns.core.domain.record._
 import vinyldns.core.domain.record.RecordChangeRepository
 import vinyldns.core.protobuf.ProtobufConversions
-import vinyldns.api.route.Monitored
+import vinyldns.api.route.VinylDNSMonitor
+import vinyldns.core.MonitoredAlgebra
 import vinyldns.proto.VinylDNSProto
 
 import scala.collection.JavaConverters._
@@ -37,21 +38,26 @@ import scala.util.Try
 
 object DynamoDBRecordChangeRepository {
   def apply(
-      config: Config = VinylDNSConfig.recordChangeStoreConfig,
-      dynamoConfig: Config = VinylDNSConfig.dynamoConfig): DynamoDBRecordChangeRepository =
+             config: Config = VinylDNSConfig.recordChangeStoreConfig,
+             dynamoConfig: Config = VinylDNSConfig.dynamoConfig): DynamoDBRecordChangeRepository =
     new DynamoDBRecordChangeRepository(
       config,
       new DynamoDBHelper(
         DynamoDBClient(dynamoConfig),
-        LoggerFactory.getLogger("DynamoDBRecordChangeRepository")))
+        LoggerFactory.getLogger("DynamoDBRecordChangeRepository"),
+        VinylDNSMetrics.metricsRegistry),
+      VinylDNSMonitor
+    )
 }
 
 class DynamoDBRecordChangeRepository(
     config: Config = VinylDNSConfig.recordChangeStoreConfig,
-    dynamoDBHelper: DynamoDBHelper)
+    dynamoDBHelper: DynamoDBHelper,
+    monitoredAlgebra: MonitoredAlgebra)
     extends RecordChangeRepository
-    with ProtobufConversions
-    with Monitored {
+    with ProtobufConversions {
+
+  import monitoredAlgebra.monitor
 
   val log: Logger = LoggerFactory.getLogger("DynamoDBRecordChangeRepository")
 
@@ -233,26 +239,25 @@ class DynamoDBRecordChangeRepository(
         .withExpressionAttributeValues(expressionAttributeValues)
         .withKeyConditionExpression(keyConditionExpression)
 
-      dynamoDBHelper.query(queryRequest).map { queryResult =>
-        {
-          queryResult.getItems.asScala
-            .foldLeft(Map.empty[String, ChangeSet]) {
-              case (changeSetMap, item) =>
-                val csid = item.get(CHANGE_SET_ID).getS
-                val thisChangeSet = changeSetMap.getOrElse(csid, toChangeSet(item))
-                changeSetMap + (csid -> thisChangeSet.appendRecordSetChange(
-                  toRecordSetChange(item)))
-            }
-            .values
-            .toList
-        }
+      dynamoDBHelper.query(queryRequest).map { queryResult => {
+        queryResult.getItems.asScala
+          .foldLeft(Map.empty[String, ChangeSet]) {
+            case (changeSetMap, item) =>
+              val csid = item.get(CHANGE_SET_ID).getS
+              val thisChangeSet = changeSetMap.getOrElse(csid, toChangeSet(item))
+              changeSetMap + (csid -> thisChangeSet.appendRecordSetChange(
+                toRecordSetChange(item)))
+          }
+          .values
+          .toList
+      }
       }
     }
 
   def listRecordSetChanges(
-      zoneId: String,
-      startFrom: Option[String] = None,
-      maxItems: Int = 100): IO[ListRecordSetChangesResults] =
+                            zoneId: String,
+                            startFrom: Option[String] = None,
+                            maxItems: Int = 100): IO[ListRecordSetChangesResults] =
     monitor("repo.RecordChange.getRecordSetChanges") {
       log.info(s"Getting record set changes for zone $zoneId")
 
@@ -344,8 +349,8 @@ class DynamoDBRecordChangeRepository(
     }
 
   def toItem(
-      changeSet: ChangeSet,
-      change: RecordSetChange): java.util.HashMap[String, AttributeValue] = {
+              changeSet: ChangeSet,
+              change: RecordSetChange): java.util.HashMap[String, AttributeValue] = {
     val item = new java.util.HashMap[String, AttributeValue]()
     item.put(CHANGE_SET_ID, new AttributeValue(changeSet.id))
     item.put(ZONE_ID, new AttributeValue(changeSet.zoneId))

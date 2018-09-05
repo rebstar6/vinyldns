@@ -24,7 +24,7 @@ import com.amazonaws.services.dynamodbv2.model._
 import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
-import vinyldns.api.VinylDNSConfig
+import vinyldns.api.{VinylDNSConfig, VinylDNSMetrics}
 import vinyldns.core.domain.membership.{GroupChange, GroupChangeRepository, ListGroupChangesResults}
 import vinyldns.core.protobuf.GroupProtobufConversions
 import vinyldns.api.route.VinylDNSMonitor
@@ -42,7 +42,8 @@ object DynamoDBGroupChangeRepository {
       config,
       new DynamoDBHelper(
         DynamoDBClient(dynamoConfig),
-        LoggerFactory.getLogger(classOf[DynamoDBGroupChangeRepository])),
+        LoggerFactory.getLogger(classOf[DynamoDBGroupChangeRepository]),
+        VinylDNSMetrics.metricsRegistry),
       VinylDNSMonitor)
 }
 
