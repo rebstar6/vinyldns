@@ -20,7 +20,6 @@ import java.util.HashMap
 
 import cats.effect._
 import com.amazonaws.services.dynamodbv2.model._
-import com.typesafe.config.Config
 import org.slf4j.{Logger, LoggerFactory}
 import vinyldns.core.domain.DomainHelpers.omitTrailingDot
 import vinyldns.core.domain.record.RecordType.RecordType
@@ -37,7 +36,8 @@ object DynamoDBRecordSetRepository extends ProtobufConversions {
   private[repository] val RECORD_SET_SORT = "record_set_sort"
   private[repository] val RECORD_SET_BLOB = "record_set_blob"
 
-  def apply(config: Config, dynamoConfig: Config): DynamoDBRecordSetRepository =
+  def apply(config: DynamoDBRepositorySettings,
+            dynamoConfig: DynamoDBDataStoreSettings): DynamoDBRecordSetRepository =
     new DynamoDBRecordSetRepository(
       config,
       new DynamoDBHelper(
@@ -46,7 +46,7 @@ object DynamoDBRecordSetRepository extends ProtobufConversions {
 
 }
 
-class DynamoDBRecordSetRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
+class DynamoDBRecordSetRepository(config: DynamoDBRepositorySettings, dynamoDBHelper: DynamoDBHelper)
     extends RecordSetRepository
     with DynamoDBRecordSetConversions
     with Monitored
@@ -57,11 +57,11 @@ class DynamoDBRecordSetRepository(config: Config, dynamoDBHelper: DynamoDBHelper
   private val ZONE_ID_RECORD_SET_NAME_INDEX = "zone_id_record_set_name_index"
   private val ZONE_ID_RECORD_SET_SORT_INDEX = "zone_id_record_set_sort_index"
 
-  private val dynamoReads = config.getLong("dynamo.provisionedReads")
-  private val dynamoWrites = config.getLong("dynamo.provisionedWrites")
+  private val dynamoReads = config.provisionedReads
+  private val dynamoWrites = config.provisionedWrites
 
   val log: Logger = LoggerFactory.getLogger("DynamoDBRecordSetRepository")
-  private[repository] val recordSetTableName: String = config.getString("dynamo.tableName")
+  private[repository] val recordSetTableName: String = config.tableName
 
   private[repository] val tableAttributes = Seq(
     new AttributeDefinition(ZONE_ID, "S"),

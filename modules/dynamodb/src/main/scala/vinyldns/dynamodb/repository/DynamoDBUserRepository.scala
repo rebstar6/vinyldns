@@ -22,7 +22,6 @@ import java.util.HashMap
 import cats.effect._
 import cats.implicits._
 import com.amazonaws.services.dynamodbv2.model._
-import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
 import vinyldns.core.domain.membership.{ListUsersResults, User, UserRepository}
@@ -32,7 +31,7 @@ import scala.collection.JavaConverters._
 
 object DynamoDBUserRepository {
 
-  def apply(config: Config, dynamoConfig: Config): DynamoDBUserRepository =
+  def apply(config: DynamoDBRepositorySettings, dynamoConfig: DynamoDBDataStoreSettings): DynamoDBUserRepository =
     new DynamoDBUserRepository(
       config,
       new DynamoDBHelper(
@@ -40,7 +39,7 @@ object DynamoDBUserRepository {
         LoggerFactory.getLogger("DynamoDBUserRepository")))
 }
 
-class DynamoDBUserRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
+class DynamoDBUserRepository(config: DynamoDBRepositorySettings, dynamoDBHelper: DynamoDBHelper)
     extends UserRepository
     with Monitored {
 
@@ -58,9 +57,9 @@ class DynamoDBUserRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
   private[repository] val USER_NAME_INDEX_NAME = "username_index"
   private[repository] val ACCESS_KEY_INDEX_NAME = "access_key_index"
 
-  private val dynamoReads = config.getLong("dynamo.provisionedReads")
-  private val dynamoWrites = config.getLong("dynamo.provisionedWrites")
-  private[repository] val USER_TABLE = config.getString("dynamo.tableName")
+  private val dynamoReads = config.provisionedReads
+  private val dynamoWrites = config.provisionedWrites
+  private[repository] val USER_TABLE = config.tableName
 
   private[repository] val tableAttributes = Seq(
     new AttributeDefinition(USER_ID, "S"),

@@ -22,7 +22,6 @@ import java.util.HashMap
 import cats.effect._
 import cats.implicits._
 import com.amazonaws.services.dynamodbv2.model._
-import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
 import vinyldns.core.domain.record._
@@ -35,7 +34,8 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 object DynamoDBRecordChangeRepository {
-  def apply(config: Config, dynamoConfig: Config): DynamoDBRecordChangeRepository =
+  def apply(config: DynamoDBRepositorySettings,
+            dynamoConfig: DynamoDBDataStoreSettings): DynamoDBRecordChangeRepository =
     new DynamoDBRecordChangeRepository(
       config,
       new DynamoDBHelper(
@@ -43,7 +43,7 @@ object DynamoDBRecordChangeRepository {
         LoggerFactory.getLogger("DynamoDBRecordChangeRepository")))
 }
 
-class DynamoDBRecordChangeRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
+class DynamoDBRecordChangeRepository(config: DynamoDBRepositorySettings, dynamoDBHelper: DynamoDBHelper)
     extends RecordChangeRepository
     with ProtobufConversions
     with Monitored {
@@ -63,9 +63,9 @@ class DynamoDBRecordChangeRepository(config: Config, dynamoDBHelper: DynamoDBHel
   private val CHANGE_STATUS_ZONE_ID_INDEX = "change_status_index"
   private val ZONE_ID_CREATED_INDEX = "zone_id_created_index"
 
-  private val dynamoReads = config.getLong("dynamo.provisionedReads")
-  private val dynamoWrites = config.getLong("dynamo.provisionedWrites")
-  private[repository] val recordChangeTable = config.getString("dynamo.tableName")
+  private val dynamoReads = config.provisionedReads
+  private val dynamoWrites = config.provisionedWrites
+  private[repository] val recordChangeTable = config.tableName
 
   private[repository] val tableAttributes = Seq(
     new AttributeDefinition(RECORD_SET_CHANGE_ID, "S"),

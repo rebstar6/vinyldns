@@ -21,7 +21,6 @@ import java.util.HashMap
 
 import cats.effect._
 import com.amazonaws.services.dynamodbv2.model._
-import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import vinyldns.core.domain.zone.ZoneChangeStatus.ZoneChangeStatus
@@ -39,7 +38,8 @@ import scala.util.Try
 
 object DynamoDBZoneChangeRepository extends ProtobufConversions {
 
-  def apply(config: Config, dynamoConfig: Config): DynamoDBZoneChangeRepository =
+  def apply(config: DynamoDBRepositorySettings,
+            dynamoConfig: DynamoDBDataStoreSettings): DynamoDBZoneChangeRepository =
     new DynamoDBZoneChangeRepository(
       config,
       new DynamoDBHelper(
@@ -47,7 +47,7 @@ object DynamoDBZoneChangeRepository extends ProtobufConversions {
         LoggerFactory.getLogger("DynamoDBZoneChangeRepository")))
 }
 
-class DynamoDBZoneChangeRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
+class DynamoDBZoneChangeRepository(config: DynamoDBRepositorySettings, dynamoDBHelper: DynamoDBHelper)
     extends ZoneChangeRepository
     with ProtobufConversions
     with Monitored {
@@ -67,9 +67,9 @@ class DynamoDBZoneChangeRepository(config: Config, dynamoDBHelper: DynamoDBHelpe
   private val ZONE_ID_CREATED_INDEX = "zone_id_created_index"
 
   val log = LoggerFactory.getLogger(classOf[DynamoDBZoneChangeRepository])
-  private val dynamoReads = config.getLong("dynamo.provisionedReads")
-  private val dynamoWrites = config.getLong("dynamo.provisionedWrites")
-  private[repository] val zoneChangeTable = config.getString("dynamo.tableName")
+  private val dynamoReads = config.provisionedReads
+  private val dynamoWrites = config.provisionedWrites
+  private[repository] val zoneChangeTable = config.tableName
 
   private[repository] val tableAttributes = Seq(
     new AttributeDefinition(CHANGE_ID, "S"),

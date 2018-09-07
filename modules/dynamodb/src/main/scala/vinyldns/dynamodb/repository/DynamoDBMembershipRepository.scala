@@ -20,7 +20,6 @@ import java.util.{Collections, HashMap}
 
 import cats.effect._
 import com.amazonaws.services.dynamodbv2.model._
-import com.typesafe.config.Config
 import org.slf4j.{Logger, LoggerFactory}
 import vinyldns.core.domain.membership.MembershipRepository
 import vinyldns.core.route.Monitored
@@ -29,7 +28,8 @@ import scala.collection.JavaConverters._
 
 object DynamoDBMembershipRepository {
 
-  def apply(config: Config, dynamoConfig: Config): DynamoDBMembershipRepository =
+  def apply(config: DynamoDBRepositorySettings,
+            dynamoConfig: DynamoDBDataStoreSettings): DynamoDBMembershipRepository =
     new DynamoDBMembershipRepository(
       config,
       new DynamoDBHelper(
@@ -37,7 +37,7 @@ object DynamoDBMembershipRepository {
         LoggerFactory.getLogger("DynamoDBMembershipRepository")))
 }
 
-class DynamoDBMembershipRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
+class DynamoDBMembershipRepository(config: DynamoDBRepositorySettings, dynamoDBHelper: DynamoDBHelper)
     extends MembershipRepository
     with Monitored {
 
@@ -46,9 +46,9 @@ class DynamoDBMembershipRepository(config: Config, dynamoDBHelper: DynamoDBHelpe
   private[repository] val USER_ID = "user_id"
   private[repository] val GROUP_ID = "group_id"
 
-  private val dynamoReads = config.getLong("dynamo.provisionedReads")
-  private val dynamoWrites = config.getLong("dynamo.provisionedWrites")
-  private[repository] val membershipTable = config.getString("dynamo.tableName")
+  private val dynamoReads = config.provisionedReads
+  private val dynamoWrites = config.provisionedWrites
+  private[repository] val membershipTable = config.tableName
 
   private[repository] val tableAttributes = Seq(
     new AttributeDefinition(USER_ID, "S"),

@@ -21,7 +21,6 @@ import java.util.HashMap
 
 import cats.effect._
 import com.amazonaws.services.dynamodbv2.model._
-import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
 import vinyldns.core.domain.membership.{GroupChange, GroupChangeRepository, ListGroupChangesResults}
@@ -33,7 +32,8 @@ import scala.collection.JavaConverters._
 
 object DynamoDBGroupChangeRepository {
 
-  def apply(config: Config, dynamoConfig: Config): DynamoDBGroupChangeRepository =
+  def apply(config: DynamoDBRepositorySettings,
+            dynamoConfig: DynamoDBDataStoreSettings): DynamoDBGroupChangeRepository =
     new DynamoDBGroupChangeRepository(
       config,
       new DynamoDBHelper(
@@ -41,7 +41,7 @@ object DynamoDBGroupChangeRepository {
         LoggerFactory.getLogger(classOf[DynamoDBGroupChangeRepository])))
 }
 
-class DynamoDBGroupChangeRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
+class DynamoDBGroupChangeRepository(config: DynamoDBRepositorySettings, dynamoDBHelper: DynamoDBHelper)
     extends GroupChangeRepository
     with Monitored
     with GroupProtobufConversions {
@@ -55,9 +55,9 @@ class DynamoDBGroupChangeRepository(config: Config, dynamoDBHelper: DynamoDBHelp
 
   private val GROUP_ID_AND_CREATED_INDEX = "GROUP_ID_AND_CREATED_INDEX"
 
-  private val dynamoReads = config.getLong("dynamo.provisionedReads")
-  private val dynamoWrites = config.getLong("dynamo.provisionedWrites")
-  private[repository] val GROUP_CHANGE_TABLE = config.getString("dynamo.tableName")
+  private val dynamoReads = config.provisionedReads
+  private val dynamoWrites = config.provisionedWrites
+  private[repository] val GROUP_CHANGE_TABLE = config.tableName
 
   private[repository] val tableAttributes = Seq(
     new AttributeDefinition(GROUP_ID, "S"),

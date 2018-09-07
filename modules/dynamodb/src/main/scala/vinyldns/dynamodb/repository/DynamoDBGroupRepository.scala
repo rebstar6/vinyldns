@@ -22,7 +22,6 @@ import java.util.HashMap
 import cats.effect._
 import cats.implicits._
 import com.amazonaws.services.dynamodbv2.model.{CreateTableRequest, Projection, _}
-import com.typesafe.config.Config
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
 import vinyldns.core.domain.membership.GroupStatus.GroupStatus
@@ -33,7 +32,8 @@ import scala.collection.JavaConverters._
 
 object DynamoDBGroupRepository {
 
-  def apply(config: Config, dynamoConfig: Config): DynamoDBGroupRepository =
+  def apply(config: DynamoDBRepositorySettings,
+            dynamoConfig: DynamoDBDataStoreSettings): DynamoDBGroupRepository =
     new DynamoDBGroupRepository(
       config,
       new DynamoDBHelper(
@@ -41,7 +41,7 @@ object DynamoDBGroupRepository {
         LoggerFactory.getLogger(classOf[DynamoDBGroupRepository])))
 }
 
-class DynamoDBGroupRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
+class DynamoDBGroupRepository(config: DynamoDBRepositorySettings, dynamoDBHelper: DynamoDBHelper)
     extends GroupRepository
     with Monitored {
 
@@ -57,9 +57,9 @@ class DynamoDBGroupRepository(config: Config, dynamoDBHelper: DynamoDBHelper)
   private val ADMIN_IDS = "admin_ids"
   private val GROUP_NAME_INDEX = "group_name_index"
 
-  private val dynamoReads = config.getLong("dynamo.provisionedReads")
-  private val dynamoWrites = config.getLong("dynamo.provisionedWrites")
-  private[repository] val GROUP_TABLE = config.getString("dynamo.tableName")
+  private val dynamoReads = config.provisionedReads
+  private val dynamoWrites = config.provisionedWrites
+  private[repository] val GROUP_TABLE = config.tableName
 
   private[repository] val tableAttributes = Seq(
     new AttributeDefinition(GROUP_ID, "S"),
