@@ -39,8 +39,8 @@ class UnexpectedDynamoResponseException(message: String, cause: Throwable)
 
 trait DynamoUtils {
 
-  def createTableIfNotExists(dynanmoDB: AmazonDynamoDBClient, req: CreateTableRequest): Boolean
-  def waitUntilActive(dynamoDB: AmazonDynamoDBClient, tableName: String): Unit
+  def createTableIfNotExists(dynamoDB: AmazonDynamoDBClient, req: CreateTableRequest): Boolean
+  def waitUntilActive(dynamoDB: AmazonDynamoDBClient, tableName: String): IO[Unit]
 }
 
 /* Used to provide an exponential backoff in the event of a Provisioned Throughput Exception */
@@ -57,8 +57,8 @@ class DynamoDBHelper(dynamoDB: AmazonDynamoDBClient, log: Logger) {
     VinylDNSMetrics.metricsRegistry.meter("dynamo.unexpectedFailure")
   private[repository] val callRateMeter = VinylDNSMetrics.metricsRegistry.meter("dynamo.callRate")
   private[repository] val dynamoUtils = new DynamoUtils {
-    def waitUntilActive(dynamoDB: AmazonDynamoDBClient, tableName: String): Unit =
-      TableUtils.waitUntilActive(dynamoDB, tableName)
+    def waitUntilActive(dynamoDB: AmazonDynamoDBClient, tableName: String): IO[Unit] =
+      IO(TableUtils.waitUntilActive(dynamoDB, tableName))
 
     def createTableIfNotExists(dynamoDB: AmazonDynamoDBClient, req: CreateTableRequest): Boolean =
       TableUtils.createTableIfNotExists(dynamoDB, req)
@@ -142,7 +142,7 @@ class DynamoDBHelper(dynamoDB: AmazonDynamoDBClient, log: Logger) {
     }
   }
 
-  def setupTable(createTableRequest: CreateTableRequest): Unit = {
+  def setupTable(createTableRequest: CreateTableRequest): IO[Unit] = {
     if (!dynamoUtils.createTableIfNotExists(dynamoDB, createTableRequest)) {
       log.info(s"Table ${createTableRequest.getTableName} already exists")
     }

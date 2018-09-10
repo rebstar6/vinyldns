@@ -35,18 +35,64 @@ object DynamoDBRecordSetRepository extends ProtobufConversions {
   private[repository] val RECORD_SET_NAME = "record_set_name"
   private[repository] val RECORD_SET_SORT = "record_set_sort"
   private[repository] val RECORD_SET_BLOB = "record_set_blob"
+  private val ZONE_ID_RECORD_SET_NAME_INDEX = "zone_id_record_set_name_index"
+  private val ZONE_ID_RECORD_SET_SORT_INDEX = "zone_id_record_set_sort_index"
+
 
   def apply(config: DynamoDBRepositorySettings,
-            dynamoConfig: DynamoDBDataStoreSettings): DynamoDBRecordSetRepository =
-    new DynamoDBRecordSetRepository(
-      config,
-      new DynamoDBHelper(
-        DynamoDBClient(dynamoConfig),
-        LoggerFactory.getLogger("DynamoDBRecordSetRepository")))
+            dynamoConfig: DynamoDBDataStoreSettings): IO[DynamoDBRecordSetRepository] = {
+
+
+    val dynamoDBHelper = new DynamoDBHelper(
+      DynamoDBClient(dynamoConfig),
+      LoggerFactory.getLogger("DynamoDBRecordSetRepository"))
+
+
+    val dynamoReads = config.provisionedReads
+    val dynamoWrites = config.provisionedWrites
+    val recordSetTableName: String = config.tableName
+
+
+    val tableAttributes = Seq(
+      new AttributeDefinition(ZONE_ID, "S"),
+      new AttributeDefinition(RECORD_SET_NAME, "S"),
+      new AttributeDefinition(RECORD_SET_ID, "S"),
+      new AttributeDefinition(RECORD_SET_SORT, "S")
+    )
+
+    val secondaryIndexes = Seq(
+      new GlobalSecondaryIndex()
+        .withIndexName(ZONE_ID_RECORD_SET_NAME_INDEX)
+        .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
+        .withKeySchema(
+          new KeySchemaElement(ZONE_ID, KeyType.HASH),
+          new KeySchemaElement(RECORD_SET_NAME, KeyType.RANGE))
+        .withProjection(new Projection().withProjectionType("ALL")),
+      new GlobalSecondaryIndex()
+        .withIndexName(ZONE_ID_RECORD_SET_SORT_INDEX)
+        .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
+        .withKeySchema(
+          new KeySchemaElement(ZONE_ID, KeyType.HASH),
+          new KeySchemaElement(RECORD_SET_SORT, KeyType.RANGE))
+        .withProjection(new Projection().withProjectionType("ALL"))
+    )
+
+    val setup = dynamoDBHelper.setupTable(
+      new CreateTableRequest()
+        .withTableName(recordSetTableName)
+        .withAttributeDefinitions(tableAttributes: _*)
+        .withKeySchema(new KeySchemaElement(RECORD_SET_ID, KeyType.HASH))
+        .withGlobalSecondaryIndexes(secondaryIndexes: _*)
+        .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
+    )
+
+    setup.map(_ => new DynamoDBRecordSetRepository(config, dynamoDBHelper))
+
+  }
 
 }
 
-class DynamoDBRecordSetRepository(config: DynamoDBRepositorySettings, dynamoDBHelper: DynamoDBHelper)
+class DynamoDBRecordSetRepository private (config: DynamoDBRepositorySettings, dynamoDBHelper: DynamoDBHelper)
     extends RecordSetRepository
     with DynamoDBRecordSetConversions
     with Monitored
@@ -54,47 +100,8 @@ class DynamoDBRecordSetRepository(config: DynamoDBRepositorySettings, dynamoDBHe
 
   import DynamoDBRecordSetRepository._
 
-  private val ZONE_ID_RECORD_SET_NAME_INDEX = "zone_id_record_set_name_index"
-  private val ZONE_ID_RECORD_SET_SORT_INDEX = "zone_id_record_set_sort_index"
-
-  private val dynamoReads = config.provisionedReads
-  private val dynamoWrites = config.provisionedWrites
-
   val log: Logger = LoggerFactory.getLogger("DynamoDBRecordSetRepository")
   private[repository] val recordSetTableName: String = config.tableName
-
-  private[repository] val tableAttributes = Seq(
-    new AttributeDefinition(ZONE_ID, "S"),
-    new AttributeDefinition(RECORD_SET_NAME, "S"),
-    new AttributeDefinition(RECORD_SET_ID, "S"),
-    new AttributeDefinition(RECORD_SET_SORT, "S")
-  )
-
-  private[repository] val secondaryIndexes = Seq(
-    new GlobalSecondaryIndex()
-      .withIndexName(ZONE_ID_RECORD_SET_NAME_INDEX)
-      .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
-      .withKeySchema(
-        new KeySchemaElement(ZONE_ID, KeyType.HASH),
-        new KeySchemaElement(RECORD_SET_NAME, KeyType.RANGE))
-      .withProjection(new Projection().withProjectionType("ALL")),
-    new GlobalSecondaryIndex()
-      .withIndexName(ZONE_ID_RECORD_SET_SORT_INDEX)
-      .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
-      .withKeySchema(
-        new KeySchemaElement(ZONE_ID, KeyType.HASH),
-        new KeySchemaElement(RECORD_SET_SORT, KeyType.RANGE))
-      .withProjection(new Projection().withProjectionType("ALL"))
-  )
-
-  dynamoDBHelper.setupTable(
-    new CreateTableRequest()
-      .withTableName(recordSetTableName)
-      .withAttributeDefinitions(tableAttributes: _*)
-      .withKeySchema(new KeySchemaElement(RECORD_SET_ID, KeyType.HASH))
-      .withGlobalSecondaryIndexes(secondaryIndexes: _*)
-      .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
-  )
 
   def apply(changeSet: ChangeSet): IO[ChangeSet] =
     monitor("repo.RecordSet.apply") {
