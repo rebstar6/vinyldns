@@ -23,6 +23,26 @@ import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.api.domain.engine.EngineCommandBus
 import vinyldns.core.domain.membership.{Group, GroupRepository, User, UserRepository}
 import vinyldns.core.domain.zone._
+import vinyldns.core.repository.DataAccessor
+
+object ZoneService {
+  def apply(
+      dataAccessor: DataAccessor,
+      connectionValidator: ZoneConnectionValidatorAlgebra,
+      commandBus: EngineCommandBus,
+      zoneValidations: ZoneValidations,
+      accessValidation: AccessValidationAlgebra): ZoneService =
+    new ZoneService(
+      dataAccessor.zoneRepository,
+      dataAccessor.groupRepository,
+      dataAccessor.userRepository,
+      dataAccessor.zoneChangeRepository,
+      connectionValidator,
+      commandBus,
+      zoneValidations,
+      accessValidation
+    )
+}
 
 class ZoneService(
     zoneRepository: ZoneRepository,

@@ -30,6 +30,20 @@ import vinyldns.core.domain.record.{RecordSet, RecordSetRepository}
 import vinyldns.core.domain.zone.ZoneRepository
 import vinyldns.api.domain.{RecordAlreadyExists, ZoneDiscoveryError}
 import vinyldns.core.domain.batch.{BatchChange, BatchChangeRepository, BatchChangeSummaryList}
+import vinyldns.core.repository.DataAccessor
+
+object BatchChangeService {
+  def apply(
+      dataAccessor: DataAccessor,
+      batchChangeValidations: BatchChangeValidationsAlgebra,
+      batchChangeConverter: BatchChangeConverterAlgebra): BatchChangeService =
+    new BatchChangeService(
+      dataAccessor.zoneRepository,
+      dataAccessor.recordSetRepository,
+      batchChangeValidations,
+      dataAccessor.batchChangeRepository,
+      batchChangeConverter)
+}
 
 class BatchChangeService(
     zoneRepository: ZoneRepository,

@@ -23,7 +23,7 @@ import cats.effect._
 import cats.syntax.all._
 import vinyldns.api.VinylDNSConfig
 import vinyldns.api.crypto.Crypto
-import vinyldns.api.domain.auth.{AuthPrincipalProvider, MembershipAuthPrincipalProvider}
+import vinyldns.api.domain.auth.AuthPrincipalProvider
 import vinyldns.core.crypto.CryptoAlgebra
 import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.route.Monitored
@@ -34,9 +34,22 @@ sealed abstract class VinylDNSAuthenticationError(msg: String) extends Throwable
 final case class AuthMissing(msg: String) extends VinylDNSAuthenticationError(msg)
 final case class AuthRejected(reason: String) extends VinylDNSAuthenticationError(reason)
 
-trait VinylDNSAuthentication extends Monitored {
-  val authenticator: Aws4Authenticator
-  val authPrincipalProvider: AuthPrincipalProvider
+class VinylDNSAuthenticator(
+    val authenticator: Aws4Authenticator,
+    val authPrincipalProvider: AuthPrincipalProvider)
+    extends Monitored {
+
+  def authenticate(ctx: RequestContext, content: String): IO[Either[Cause, AuthPrincipal]] =
+    getAuthPrincipal(ctx, content).attempt.map {
+      case Right(ok) => Right(ok)
+      case Left(_: AuthMissing) =>
+        Left(AuthenticationFailedRejection.CredentialsMissing)
+      case Left(_: AuthRejected) =>
+        Left(AuthenticationFailedRejection.CredentialsRejected)
+      case Left(e: Throwable) =>
+        // throw here as some unexpected exception occurred
+        throw e
+    }
 
   /**
     * Gets the auth header from the request.  If the auth header is not found then the
@@ -111,7 +124,7 @@ trait VinylDNSAuthentication extends Monitored {
     * @param ctx The Http Request Context
     * @return A Future containing the AuthPrincipal for the request.
     */
-  def authenticate(ctx: RequestContext, content: String): IO[AuthPrincipal] =
+  def getAuthPrincipal(ctx: RequestContext, content: String): IO[AuthPrincipal] =
     for {
       authHeader <- getAuthHeader(ctx)
       regexMatch <- parseAuthHeader(authHeader)
@@ -134,31 +147,4 @@ trait VinylDNSAuthentication extends Monitored {
     authPrincipalProvider.getAuthPrincipal(accessKey).map {
       _.getOrElse(throw AuthRejected(s"Account with accessKey $accessKey specified was not found"))
     }
-}
-
-class VinylDNSAuthenticator(
-    val authenticator: Aws4Authenticator,
-    val authPrincipalProvider: AuthPrincipalProvider)
-    extends VinylDNSAuthentication {
-
-  def apply(ctx: RequestContext, content: String): IO[Either[Cause, AuthPrincipal]] =
-    authenticate(ctx, content).attempt.map {
-      case Right(ok) => Right(ok)
-      case Left(_: AuthMissing) =>
-        Left(AuthenticationFailedRejection.CredentialsMissing)
-      case Left(_: AuthRejected) =>
-        Left(AuthenticationFailedRejection.CredentialsRejected)
-      case Left(e: Throwable) =>
-        // throw here as some unexpected exception occurred
-        throw e
-    }
-}
-
-object VinylDNSAuthenticator {
-  lazy val aws4Authenticator = new Aws4Authenticator
-  lazy val authPrincipalProvider = MembershipAuthPrincipalProvider()
-  lazy val authenticator = new VinylDNSAuthenticator(aws4Authenticator, authPrincipalProvider)
-
-  def apply(ctx: RequestContext, content: String): IO[Either[Cause, AuthPrincipal]] =
-    authenticator.apply(ctx, content)
 }

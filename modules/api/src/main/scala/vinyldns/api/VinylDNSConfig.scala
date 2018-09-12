@@ -32,22 +32,12 @@ object VinylDNSConfig {
 
   lazy val config: Config = ConfigFactory.load()
   lazy val vinyldnsConfig: Config = config.getConfig("vinyldns")
-
-  lazy val dynamoConfig = DynamoConfig.dynamoConfig
-  lazy val zoneChangeStoreConfig: DynamoDBRepositorySettings = DynamoConfig.zoneChangeStoreConfig
-  lazy val recordSetStoreConfig: DynamoDBRepositorySettings = DynamoConfig.recordSetStoreConfig
-  lazy val recordChangeStoreConfig: DynamoDBRepositorySettings =
-    DynamoConfig.recordChangeStoreConfig
-  lazy val usersStoreConfig: DynamoDBRepositorySettings = DynamoConfig.usersStoreConfig
-  lazy val groupsStoreConfig: DynamoDBRepositorySettings = DynamoConfig.groupsStoreConfig
-  lazy val groupChangesStoreConfig: DynamoDBRepositorySettings =
-    DynamoConfig.groupChangesStoreConfig
-  lazy val membershipStoreConfig: DynamoDBRepositorySettings = DynamoConfig.membershipStoreConfig
-
+  lazy val dataStoreConfigs: List[DataStoreConfig] =
+    vinyldnsConfig.getStringList("data-stores").asScala.toList.map { configKey =>
+      pureconfig.loadConfigOrThrow[DataStoreConfig](vinyldnsConfig, configKey)
+    }
   lazy val restConfig: Config = vinyldnsConfig.getConfig("rest")
   lazy val monitoringConfig: Config = vinyldnsConfig.getConfig("monitoring")
-  lazy val mySqlConfig: DataStoreConfig =
-    pureconfig.loadConfigOrThrow[DataStoreConfig](vinyldnsConfig, "mysql")
   lazy val sqsConfig: Config = vinyldnsConfig.getConfig("sqs")
   lazy val cryptoConfig: Config = vinyldnsConfig.getConfig("crypto")
   lazy val system: ActorSystem = ActorSystem("VinylDNS", VinylDNSConfig.config)
