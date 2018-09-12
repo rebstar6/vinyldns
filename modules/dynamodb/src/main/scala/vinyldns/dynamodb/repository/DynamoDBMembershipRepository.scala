@@ -32,13 +32,14 @@ object DynamoDBMembershipRepository {
   private[repository] val USER_ID = "user_id"
   private[repository] val GROUP_ID = "group_id"
 
+  private val logger = LoggerFactory.getLogger("DynamoDBMembershipRepository")
+
   def apply(
       config: DynamoDBRepositorySettings,
       dynamoConfig: DynamoDBDataStoreSettings): IO[DynamoDBMembershipRepository] = {
 
-    val dynamoDBHelper = new DynamoDBHelper(
-      DynamoDBClient(dynamoConfig),
-      LoggerFactory.getLogger("DynamoDBMembershipRepository"))
+    logger.error("Initializing DynamoDBMembershipRepository")
+    val dynamoDBHelper = new DynamoDBHelper(DynamoDBClient(dynamoConfig), logger)
 
     val dynamoReads = config.provisionedReads
     val dynamoWrites = config.provisionedWrites
@@ -59,6 +60,7 @@ object DynamoDBMembershipRepository {
         .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
     )
 
+    logger.error("DynamoDBMembershipRepository initialization complete")
     setup.as(new DynamoDBMembershipRepository(tableName, dynamoDBHelper))
   }
 }
