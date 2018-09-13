@@ -39,9 +39,14 @@ object DynamoDBRecordSetRepository extends ProtobufConversions {
   private val ZONE_ID_RECORD_SET_NAME_INDEX = "zone_id_record_set_name_index"
   private val ZONE_ID_RECORD_SET_SORT_INDEX = "zone_id_record_set_sort_index"
 
+  private val log: Logger = LoggerFactory.getLogger(classOf[DynamoDBRecordSetRepository])
+
   def apply(
       config: DynamoDBRepositorySettings,
       dynamoConfig: DynamoDBDataStoreSettings): IO[DynamoDBRecordSetRepository] = {
+
+    val tableName = config.tableName
+    log.error(s"Initializing DynamoDBRecordSetRepository with name $tableName")
 
     val dynamoDBHelper = new DynamoDBHelper(
       DynamoDBClient(dynamoConfig),
@@ -49,7 +54,6 @@ object DynamoDBRecordSetRepository extends ProtobufConversions {
 
     val dynamoReads = config.provisionedReads
     val dynamoWrites = config.provisionedWrites
-    val tableName = config.tableName
 
     val tableAttributes = Seq(
       new AttributeDefinition(ZONE_ID, "S"),
@@ -84,6 +88,7 @@ object DynamoDBRecordSetRepository extends ProtobufConversions {
         .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
     )
 
+    log.error("Repo initialization complete")
     setup.as(new DynamoDBRecordSetRepository(tableName, dynamoDBHelper))
   }
 }
@@ -97,8 +102,6 @@ class DynamoDBRecordSetRepository private[repository] (
     with QueryHelper {
 
   import DynamoDBRecordSetRepository._
-
-  val log: Logger = LoggerFactory.getLogger("DynamoDBRecordSetRepository")
 
   def apply(changeSet: ChangeSet): IO[ChangeSet] =
     monitor("repo.RecordSet.apply") {

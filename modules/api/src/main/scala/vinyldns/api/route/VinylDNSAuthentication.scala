@@ -22,7 +22,7 @@ import cats.effect._
 import cats.syntax.all._
 import vinyldns.api.VinylDNSConfig
 import vinyldns.api.crypto.Crypto
-import vinyldns.api.domain.auth.{AuthPrincipalProvider, MembershipAuthPrincipalProvider}
+import vinyldns.api.domain.auth.AuthPrincipalProvider
 import vinyldns.core.crypto.CryptoAlgebra
 import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.route.Monitored
@@ -35,9 +35,29 @@ final case class AuthMissing(msg: String) extends VinylDNSAuthenticationError(ms
 final case class AuthRejected(reason: String) extends VinylDNSAuthenticationError(reason)
 final case class AccountLocked(reason: String) extends VinylDNSAuthenticationError(reason)
 
-trait VinylDNSAuthentication extends Monitored {
-  val authenticator: Aws4Authenticator
-  val authPrincipalProvider: AuthPrincipalProvider
+trait VinylDNSAuthenticator {
+
+  def authenticate(
+      ctx: RequestContext,
+      content: String): IO[Either[VinylDNSAuthenticationError, AuthPrincipal]]
+
+}
+
+class ProductionVinylDNSAuthenticator(
+    val authenticator: Aws4Authenticator,
+    val authPrincipalProvider: AuthPrincipalProvider)
+    extends VinylDNSAuthenticator
+    with Monitored {
+
+  def authenticate(
+      ctx: RequestContext,
+      content: String): IO[Either[VinylDNSAuthenticationError, AuthPrincipal]] =
+    // Need to refactor getAuthPrincipal to be an IO[Either[E, A]] instead of how it is implemented, for the time being...
+    getAuthPrincipal(ctx, content).attempt.flatMap {
+      case Left(e: VinylDNSAuthenticationError) => IO.pure(Left(e))
+      case Right(ok) => IO.pure(Right(ok))
+      case Left(e) => IO.raiseError(e)
+    }
 
   /**
     * Gets the auth header from the request.  If the auth header is not found then the
@@ -112,7 +132,7 @@ trait VinylDNSAuthentication extends Monitored {
     * @param ctx The Http Request Context
     * @return A Future containing the AuthPrincipal for the request.
     */
-  def authenticate(ctx: RequestContext, content: String): IO[AuthPrincipal] =
+  def getAuthPrincipal(ctx: RequestContext, content: String): IO[AuthPrincipal] =
     for {
       authHeader <- getAuthHeader(ctx)
       regexMatch <- parseAuthHeader(authHeader)
@@ -141,31 +161,4 @@ trait VinylDNSAuthentication extends Monitored {
       case None =>
         IO.raiseError(AuthRejected(s"Account with accessKey $accessKey specified was not found"))
     }
-}
-
-class VinylDNSAuthenticator(
-    val authenticator: Aws4Authenticator,
-    val authPrincipalProvider: AuthPrincipalProvider)
-    extends VinylDNSAuthentication {
-
-  def apply(
-      ctx: RequestContext,
-      content: String): IO[Either[VinylDNSAuthenticationError, AuthPrincipal]] =
-    // Need to refactor authenticate to be an IO[Either[E, A]] instead of how it is implemented, for the time being...
-    authenticate(ctx, content).attempt.flatMap {
-      case Left(e: VinylDNSAuthenticationError) => IO.pure(Left(e))
-      case Right(ok) => IO.pure(Right(ok))
-      case Left(e) => IO.raiseError(e)
-    }
-}
-
-object VinylDNSAuthenticator {
-  lazy val aws4Authenticator = new Aws4Authenticator
-  lazy val authPrincipalProvider = MembershipAuthPrincipalProvider()
-  lazy val authenticator = new VinylDNSAuthenticator(aws4Authenticator, authPrincipalProvider)
-
-  def apply(
-      ctx: RequestContext,
-      content: String): IO[Either[VinylDNSAuthenticationError, AuthPrincipal]] =
-    authenticator.apply(ctx, content)
 }

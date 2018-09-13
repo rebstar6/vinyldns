@@ -32,17 +32,19 @@ object DynamoDBMembershipRepository {
   private[repository] val USER_ID = "user_id"
   private[repository] val GROUP_ID = "group_id"
 
+  private val log: Logger = LoggerFactory.getLogger(classOf[DynamoDBMembershipRepository])
+
   def apply(
       config: DynamoDBRepositorySettings,
       dynamoConfig: DynamoDBDataStoreSettings): IO[DynamoDBMembershipRepository] = {
 
-    val dynamoDBHelper = new DynamoDBHelper(
-      DynamoDBClient(dynamoConfig),
-      LoggerFactory.getLogger("DynamoDBMembershipRepository"))
+    val tableName = config.tableName
+
+    log.error(s"Initializing DynamoDBMembershipRepository with name $tableName")
+    val dynamoDBHelper = new DynamoDBHelper(DynamoDBClient(dynamoConfig), log)
 
     val dynamoReads = config.provisionedReads
     val dynamoWrites = config.provisionedWrites
-    val tableName = config.tableName
 
     val tableAttributes = Seq(
       new AttributeDefinition(USER_ID, "S"),
@@ -59,6 +61,7 @@ object DynamoDBMembershipRepository {
         .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
     )
 
+    log.error("Repo initialization complete")
     setup.as(new DynamoDBMembershipRepository(tableName, dynamoDBHelper))
   }
 }
@@ -70,8 +73,6 @@ class DynamoDBMembershipRepository private[repository] (
     with Monitored {
 
   import DynamoDBMembershipRepository._
-
-  val log: Logger = LoggerFactory.getLogger("DynamoDBMembershipRepository")
 
   def getGroupsForUser(userId: String): IO[Set[String]] =
     monitor("repo.Membership.getGroupsForUser") {

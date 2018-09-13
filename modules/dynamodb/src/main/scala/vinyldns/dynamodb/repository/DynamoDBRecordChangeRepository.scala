@@ -48,9 +48,14 @@ object DynamoDBRecordChangeRepository {
   private val CHANGE_STATUS_ZONE_ID_INDEX = "change_status_index"
   private val ZONE_ID_CREATED_INDEX = "zone_id_created_index"
 
+  private val log: Logger = LoggerFactory.getLogger(classOf[DynamoDBRecordChangeRepository])
+
   def apply(
       config: DynamoDBRepositorySettings,
       dynamoConfig: DynamoDBDataStoreSettings): IO[DynamoDBRecordChangeRepository] = {
+
+    val tableName = config.tableName
+    log.error(s"Initializing DynamoDBRecordChangeRepository with name $tableName")
 
     val dynamoDBHelper = new DynamoDBHelper(
       DynamoDBClient(dynamoConfig),
@@ -58,7 +63,6 @@ object DynamoDBRecordChangeRepository {
 
     val dynamoReads = config.provisionedReads
     val dynamoWrites = config.provisionedWrites
-    val tableName = config.tableName
 
     val tableAttributes =
       Seq(
@@ -109,6 +113,7 @@ object DynamoDBRecordChangeRepository {
         .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
     )
 
+    log.error("Repo initialization complete")
     setup.as(new DynamoDBRecordChangeRepository(tableName, dynamoDBHelper))
   }
 }
@@ -121,7 +126,6 @@ class DynamoDBRecordChangeRepository private[repository] (
     with Monitored {
 
   import DynamoDBRecordChangeRepository._
-  val log: Logger = LoggerFactory.getLogger("DynamoDBRecordChangeRepository")
 
   def toWriteRequest(changeSet: ChangeSet, change: RecordSetChange): WriteRequest =
     new WriteRequest().withPutRequest(new PutRequest().withItem(toItem(changeSet, change)))
