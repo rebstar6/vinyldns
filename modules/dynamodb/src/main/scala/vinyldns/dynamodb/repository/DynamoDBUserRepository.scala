@@ -103,7 +103,6 @@ object DynamoDBUserRepository {
     item.put(IS_SUPER, new AttributeValue().withBOOL(user.isSuper))
     item.put(LOCK_STATUS, new AttributeValue(user.lockStatus.toString))
 
-
     val firstName =
       user.firstName.map(new AttributeValue(_)).getOrElse(new AttributeValue().withNULL(true))
     item.put(FIRST_NAME, firstName)

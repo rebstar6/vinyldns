@@ -59,48 +59,9 @@ object Boot extends App {
     // that if anything fails, the app does not start!
     for {
       banner <- vinyldnsBanner()
-<<<<<<< HEAD
       crypto <- IO(Crypto.instance) // load crypto
-      // TODO datastore loading will not be hardcoded by type here
-      mySqlDataStore <- new MySqlDataStoreProvider().load(VinylDNSConfig.mySqlConfig, crypto)
-      zoneRepo <- IO.fromEither(
-        mySqlDataStore
-          .get[ZoneRepository](RepositoryName.zone)
-          .toRight[Throwable](DataStoreStartupError("Missing zone repository")))
-      batchChangeRepo <- IO.fromEither(
-        mySqlDataStore
-          .get[BatchChangeRepository](RepositoryName.batchChange)
-          .toRight[Throwable](DataStoreStartupError("Missing zone repository")))
-      // TODO this also will all be removed with dynamic loading
-      userRepo <- DynamoDBUserRepository(
-        VinylDNSConfig.usersStoreConfig,
-        VinylDNSConfig.dynamoConfig,
-        crypto
-      )
-      groupRepo <- DynamoDBGroupRepository(
-        VinylDNSConfig.groupsStoreConfig,
-        VinylDNSConfig.dynamoConfig)
-      membershipRepo <- DynamoDBMembershipRepository(
-        VinylDNSConfig.membershipStoreConfig,
-        VinylDNSConfig.dynamoConfig)
-      groupChangeRepo <- DynamoDBGroupChangeRepository(
-        VinylDNSConfig.groupChangesStoreConfig,
-        VinylDNSConfig.dynamoConfig)
-      recordSetRepo <- DynamoDBRecordSetRepository(
-        VinylDNSConfig.recordSetStoreConfig,
-        VinylDNSConfig.dynamoConfig)
-      recordChangeRepo <- DynamoDBRecordChangeRepository(
-        VinylDNSConfig.recordChangeStoreConfig,
-        VinylDNSConfig.dynamoConfig)
-      zoneChangeRepo <- DynamoDBZoneChangeRepository(
-        VinylDNSConfig.zoneChangeStoreConfig,
-        VinylDNSConfig.dynamoConfig)
-      _ <- TestDataLoader.loadTestData(userRepo)
-=======
-      _ <- Crypto.loadCrypto(VinylDNSConfig.cryptoConfig) // load crypto
-      repositories <- DataStoreLoader.loadAll(VinylDNSConfig.dataStoreConfigs)
+      repositories <- DataStoreLoader.loadAll(VinylDNSConfig.dataStoreConfigs, crypto)
       _ <- TestDataLoader.loadTestData(repositories.userRepository)
->>>>>>> load databases dynamically in boot
       sqsConfig <- IO(VinylDNSConfig.sqsConfig)
       sqsConnection <- IO(SqsConnection(sqsConfig))
       processingDisabled <- IO(VinylDNSConfig.vinyldnsConfig.getBoolean("processing-disabled"))

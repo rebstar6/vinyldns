@@ -19,11 +19,8 @@ package vinyldns.api.repository
 import cats.data._
 import cats.effect.IO
 import cats.implicits._
-<<<<<<< HEAD
 import vinyldns.core.crypto.CryptoAlgebra
-=======
 import org.slf4j.LoggerFactory
->>>>>>> load databases dynamically in boot
 import vinyldns.core.domain.batch.BatchChangeRepository
 import vinyldns.core.domain.membership.{
   GroupChangeRepository,

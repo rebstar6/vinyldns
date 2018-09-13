@@ -131,12 +131,8 @@ class DynamoDBUserRepositorySpec
       item.put(CREATED, new AttributeValue().withN("0"))
       item.put(ACCESS_KEY, new AttributeValue("accessKey"))
       item.put(SECRET_KEY, new AttributeValue("secretkey"))
-<<<<<<< HEAD
-      val user = fromItem(item).unsafeRunSync()
-=======
       item.put(LOCK_STATUS, new AttributeValue("lockStatus"))
-      val user = underTest.fromItem(item)
->>>>>>> TO REMOVE BW AUTH
+      val user = fromItem(item).unsafeRunSync()
 
       user.firstName shouldBe None
       user.lastName shouldBe None
@@ -156,12 +152,8 @@ class DynamoDBUserRepositorySpec
       item.put(CREATED, new AttributeValue().withN("0"))
       item.put(ACCESS_KEY, new AttributeValue("accesskey"))
       item.put(SECRET_KEY, new AttributeValue("secretkey"))
-<<<<<<< HEAD
-      val user = fromItem(item).unsafeRunSync()
-=======
       item.put(LOCK_STATUS, new AttributeValue("lockStatus"))
-      val user = underTest.fromItem(item)
->>>>>>> TO REMOVE BW AUTH
+      val user = fromItem(item).unsafeRunSync()
 
       user.isSuper shouldBe false
     }
