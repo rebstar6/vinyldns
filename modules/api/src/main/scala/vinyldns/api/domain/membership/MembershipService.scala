@@ -22,6 +22,18 @@ import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.domain.membership.LockStatus.LockStatus
 import vinyldns.core.domain.zone.ZoneRepository
 import vinyldns.core.domain.membership._
+import vinyldns.core.repository.DataAccessor
+
+object MembershipService {
+  def apply(dataAccessor: DataAccessor): MembershipService =
+    new MembershipService(
+      dataAccessor.groupRepository,
+      dataAccessor.userRepository,
+      dataAccessor.membershipRepository,
+      dataAccessor.zoneRepository,
+      dataAccessor.groupChangeRepository
+    )
+}
 
 class MembershipService(
     groupRepo: GroupRepository,

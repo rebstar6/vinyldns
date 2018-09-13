@@ -40,9 +40,14 @@ object DynamoDBZoneChangeRepository extends ProtobufConversions {
 
   private val ZONE_ID_CREATED_INDEX = "zone_id_created_index"
 
+  private val log = LoggerFactory.getLogger(classOf[DynamoDBZoneChangeRepository])
+
   def apply(
       config: DynamoDBRepositorySettings,
       dynamoConfig: DynamoDBDataStoreSettings): IO[DynamoDBZoneChangeRepository] = {
+
+    val tableName = config.tableName
+    log.error(s"Initializing DynamoDBZoneChangeRepository with name $tableName")
 
     val dynamoDBHelper = new DynamoDBHelper(
       DynamoDBClient(dynamoConfig),
@@ -50,7 +55,6 @@ object DynamoDBZoneChangeRepository extends ProtobufConversions {
 
     val dynamoReads = config.provisionedReads
     val dynamoWrites = config.provisionedWrites
-    val tableName = config.tableName
 
     val tableAttributes = Seq(
       new AttributeDefinition(CHANGE_ID, "S"),
@@ -79,6 +83,7 @@ object DynamoDBZoneChangeRepository extends ProtobufConversions {
         .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
     )
 
+    log.error("Repo initialization complete")
     setup.as(new DynamoDBZoneChangeRepository(tableName, dynamoDBHelper))
   }
 }
@@ -94,8 +99,6 @@ class DynamoDBZoneChangeRepository private[repository] (
   import DynamoDBZoneChangeRepository._
 
   implicit def dateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_.isAfter(_))
-
-  val log = LoggerFactory.getLogger(classOf[DynamoDBZoneChangeRepository])
 
   def save(zoneChange: ZoneChange): IO[ZoneChange] =
     monitor("repo.ZoneChange.save") {

@@ -25,8 +25,8 @@ import org.mockito.Mockito.doReturn
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, OneInstancePerTest, WordSpec}
 import vinyldns.core.domain.zone.ZoneRepository
-
 import cats.effect._
+import vinyldns.core.domain.auth.AuthPrincipal
 
 class HealthCheckRoutingSpec
     extends WordSpec
@@ -41,6 +41,8 @@ class HealthCheckRoutingSpec
 
   private val mockZoneRepo = mock[ZoneRepository]
   val healthService = new HealthService(mockZoneRepo)
+  val vinylDNSAuthenticator: VinylDNSAuthenticator = new TestVinylDNSAuthenticator(
+    mock[AuthPrincipal])
 
   "GET on the healthcheck" should {
     "return OK when the zone manager returns a positive result" in {

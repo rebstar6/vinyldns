@@ -23,8 +23,13 @@ import vinyldns.core.domain.zone.ZoneRepository
 import vinyldns.core.repository.{DataStore, RepositoryName}
 
 object TestMySqlInstance {
+
+  lazy val mySqlConfig = VinylDNSConfig.dataStoreConfigs
+    .find(_.className.contains("MySqlDataStoreProvider"))
+    .get
+
   lazy val instance: DataStore =
-    new MySqlDataStoreProvider().load(VinylDNSConfig.mySqlConfig, Crypto.instance).unsafeRunSync()
+    new MySqlDataStoreProvider().load(mySqlConfig, Crypto.instance).unsafeRunSync()
 
   lazy val zoneRepository: ZoneRepository =
     instance.get[ZoneRepository](RepositoryName.zone).get

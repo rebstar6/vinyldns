@@ -42,9 +42,14 @@ object DynamoDBGroupRepository {
   private val ADMIN_IDS = "admin_ids"
   private val GROUP_NAME_INDEX = "group_name_index"
 
+  private val log: Logger = LoggerFactory.getLogger(classOf[DynamoDBGroupRepository])
+
   def apply(
       config: DynamoDBRepositorySettings,
       dynamoConfig: DynamoDBDataStoreSettings): IO[DynamoDBGroupRepository] = {
+
+    val tableName = config.tableName
+    log.error(s"Initializing DynamoDBGroupRepository with name $tableName")
 
     val dynamoDBHelper = new DynamoDBHelper(
       DynamoDBClient(dynamoConfig),
@@ -52,7 +57,6 @@ object DynamoDBGroupRepository {
 
     val dynamoReads = config.provisionedReads
     val dynamoWrites = config.provisionedWrites
-    val tableName = config.tableName
 
     val tableAttributes = Seq(
       new AttributeDefinition(GROUP_ID, "S"),
@@ -76,6 +80,7 @@ object DynamoDBGroupRepository {
         .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
     )
 
+    log.error("Repo initialization complete")
     setup.as(new DynamoDBGroupRepository(tableName, dynamoDBHelper))
   }
 }
@@ -87,8 +92,6 @@ class DynamoDBGroupRepository private[repository] (
     with Monitored {
 
   import DynamoDBGroupRepository._
-
-  val log: Logger = LoggerFactory.getLogger(classOf[DynamoDBGroupRepository])
 
   def save(group: Group): IO[Group] =
     monitor("repo.Group.save") {

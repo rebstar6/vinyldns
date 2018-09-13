@@ -25,6 +25,22 @@ import vinyldns.api.domain.zone._
 import vinyldns.api.route.ListRecordSetsResponse
 import vinyldns.core.domain.record._
 import vinyldns.core.domain.zone.{Zone, ZoneCommandResult, ZoneRepository}
+import vinyldns.core.repository.DataAccessor
+
+object RecordSetService {
+  def apply(
+      dataAccessor: DataAccessor,
+      commandBus: EngineCommandBus,
+      accessValidation: AccessValidationAlgebra): RecordSetService =
+    new RecordSetService(
+      dataAccessor.zoneRepository,
+      dataAccessor.recordSetRepository,
+      dataAccessor.recordChangeRepository,
+      dataAccessor.userRepository,
+      commandBus,
+      accessValidation
+    )
+}
 
 class RecordSetService(
     zoneRepository: ZoneRepository,

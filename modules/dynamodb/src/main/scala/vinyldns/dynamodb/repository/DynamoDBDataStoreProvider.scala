@@ -81,7 +81,7 @@ class DynamoDBDataStoreProvider extends DataStoreProvider {
         repoName: RepositoryName,
         fn: DynamoDBRepositorySettings => IO[T]): IO[Option[T]] = {
       logger.info(s"Loading dynamodb repo for type: $repoName")
-      repoSettings.get(repoName).map(fn(_)).parSequence
+      repoSettings.get(repoName).map(fn(_)).sequence
     }
 
     (

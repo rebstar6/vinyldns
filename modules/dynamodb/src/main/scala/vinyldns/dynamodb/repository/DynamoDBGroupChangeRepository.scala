@@ -39,9 +39,14 @@ object DynamoDBGroupChangeRepository {
   private[repository] val GROUP_CHANGE_ATTR = "group_change_blob"
   private val GROUP_ID_AND_CREATED_INDEX = "GROUP_ID_AND_CREATED_INDEX"
 
+  private val log: Logger = LoggerFactory.getLogger(classOf[DynamoDBGroupChangeRepository])
+
   def apply(
       config: DynamoDBRepositorySettings,
       dynamoConfig: DynamoDBDataStoreSettings): IO[DynamoDBGroupChangeRepository] = {
+
+    val tableName = config.tableName
+    log.error(s"Initializing DynamoDBGroupChangeRepository with name $tableName")
 
     val dynamoDBHelper = new DynamoDBHelper(
       DynamoDBClient(dynamoConfig),
@@ -49,7 +54,6 @@ object DynamoDBGroupChangeRepository {
 
     val dynamoReads = config.provisionedReads
     val dynamoWrites = config.provisionedWrites
-    val tableName = config.tableName
 
     val tableAttributes = Seq(
       new AttributeDefinition(GROUP_ID, "S"),
@@ -76,6 +80,7 @@ object DynamoDBGroupChangeRepository {
         .withProvisionedThroughput(new ProvisionedThroughput(dynamoReads, dynamoWrites))
     )
 
+    log.error("Repo initialization complete")
     setup.as(new DynamoDBGroupChangeRepository(tableName, dynamoDBHelper))
   }
 }
@@ -88,8 +93,6 @@ class DynamoDBGroupChangeRepository private[repository] (
     with GroupProtobufConversions {
 
   import DynamoDBGroupChangeRepository._
-
-  val log: Logger = LoggerFactory.getLogger(classOf[DynamoDBGroupChangeRepository])
 
   def save(groupChange: GroupChange): IO[GroupChange] =
     monitor("repo.GroupChange.save") {
