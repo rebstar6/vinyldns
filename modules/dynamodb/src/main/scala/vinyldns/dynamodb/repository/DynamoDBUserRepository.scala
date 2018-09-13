@@ -26,10 +26,13 @@ import com.amazonaws.services.dynamodbv2.model._
 import org.joda.time.DateTime
 import org.slf4j.{Logger, LoggerFactory}
 import vinyldns.core.crypto.CryptoAlgebra
-import vinyldns.core.domain.membership.{ListUsersResults, User, UserRepository}
+import vinyldns.core.domain.membership.LockStatus
+import vinyldns.core.domain.membership.LockStatus.LockStatus
+import vinyldns.core.domain.membership.{ListUsersResults, LockStatus, User, UserRepository}
 import vinyldns.core.route.Monitored
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 object DynamoDBUserRepository {
 
@@ -44,6 +47,7 @@ object DynamoDBUserRepository {
   private[repository] val IS_SUPER = "super"
   private[repository] val USER_NAME_INDEX_NAME = "username_index"
   private[repository] val ACCESS_KEY_INDEX_NAME = "access_key_index"
+  private[repository] val LOCK_STATUS = "lock_status"
 
   def apply(
       config: DynamoDBRepositorySettings,
@@ -97,6 +101,8 @@ object DynamoDBUserRepository {
     item.put(ACCESS_KEY, new AttributeValue(user.accessKey))
     item.put(SECRET_KEY, new AttributeValue(crypto.encrypt(user.secretKey)))
     item.put(IS_SUPER, new AttributeValue().withBOOL(user.isSuper))
+    item.put(LOCK_STATUS, new AttributeValue(user.lockStatus.toString))
+
 
     val firstName =
       user.firstName.map(new AttributeValue(_)).getOrElse(new AttributeValue().withNULL(true))
@@ -110,6 +116,11 @@ object DynamoDBUserRepository {
   }
 
   def fromItem(item: java.util.Map[String, AttributeValue]): IO[User] = IO {
+    def userStatus(str: String): LockStatus = Try(LockStatus.withName(str)).getOrElse {
+      // log.error(s"Invalid locked status value '$str'; defaulting to unlocked")
+      LockStatus.Unlocked
+    }
+
     User(
       id = item.get(USER_ID).getS,
       userName = item.get(USER_NAME).getS,
@@ -119,7 +130,8 @@ object DynamoDBUserRepository {
       firstName = Option(item.get(FIRST_NAME)).flatMap(fn => Option(fn.getS)),
       lastName = Option(item.get(LAST_NAME)).flatMap(ln => Option(ln.getS)),
       email = Option(item.get(EMAIL)).flatMap(e => Option(e.getS)),
-      isSuper = if (item.get(IS_SUPER) == null) false else item.get(IS_SUPER).getBOOL
+      isSuper = if (item.get(IS_SUPER) == null) false else item.get(IS_SUPER).getBOOL,
+      lockStatus = userStatus(item.get(LOCK_STATUS).getS)
     )
   }
 }
