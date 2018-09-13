@@ -21,13 +21,13 @@ import vinyldns.api.Interfaces._
 import vinyldns.api.domain.AccessValidationAlgebra
 import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.api.domain.engine.EngineCommandBus
+import vinyldns.api.repository.ApiDataAccessor
 import vinyldns.core.domain.membership.{Group, GroupRepository, User, UserRepository}
 import vinyldns.core.domain.zone._
-import vinyldns.core.repository.DataAccessor
 
 object ZoneService {
   def apply(
-      dataAccessor: DataAccessor,
+      dataAccessor: ApiDataAccessor,
       connectionValidator: ZoneConnectionValidatorAlgebra,
       commandBus: EngineCommandBus,
       zoneValidations: ZoneValidations,

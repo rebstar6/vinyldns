@@ -21,16 +21,6 @@ import cats.effect.IO
 import cats.implicits._
 import vinyldns.core.crypto.CryptoAlgebra
 import org.slf4j.LoggerFactory
-import vinyldns.core.domain.batch.BatchChangeRepository
-import vinyldns.core.domain.membership.{
-  GroupChangeRepository,
-  GroupRepository,
-  MembershipRepository,
-  UserRepository
-}
-import vinyldns.core.domain.record.{RecordChangeRepository, RecordSetRepository}
-import vinyldns.core.domain.zone.{ZoneChangeRepository, ZoneRepository}
-import vinyldns.core.repository._
 import vinyldns.core.repository.RepositoryName._
 
 import scala.reflect.ClassTag
@@ -42,7 +32,7 @@ object DataStoreLoader {
   def loadAll[A <: DataAccessor](
       configs: List[DataStoreConfig],
       crypto: CryptoAlgebra,
-      dataAccessorProvider: DataAccessorProvider[A]): IO[DataAccessor] =
+      dataAccessorProvider: DataAccessorProvider[A]): IO[A] =
     for {
       activeConfigs <- IO.fromEither(getValidatedConfigs(configs, dataAccessorProvider.repoNames))
       dataStores <- activeConfigs.map(load(_, crypto)).parSequence

@@ -32,9 +32,10 @@ import vinyldns.api.domain.record.RecordSetService
 import vinyldns.api.domain.zone._
 import vinyldns.api.engine.ProductionZoneCommandHandler
 import vinyldns.api.engine.sqs.{SqsCommandBus, SqsConnection}
-import vinyldns.api.repository.{DataStoreLoader, TestDataLoader}
+import vinyldns.api.repository.{ApiDataAccessor, ApiDataAccessorProvider, TestDataLoader}
 import vinyldns.api.route.{HealthService, VinylDNSService}
 import vinyldns.core.VinylDNSMetrics
+import vinyldns.core.repository.DataStoreLoader
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.{Codec, Source}
@@ -60,7 +61,8 @@ object Boot extends App {
     for {
       banner <- vinyldnsBanner()
       crypto <- IO(Crypto.instance) // load crypto
-      repositories <- DataStoreLoader.loadAll(VinylDNSConfig.dataStoreConfigs)
+      repositories <- DataStoreLoader
+        .loadAll[ApiDataAccessor](VinylDNSConfig.dataStoreConfigs, crypto, ApiDataAccessorProvider)
       _ <- TestDataLoader.loadTestData(repositories.userRepository)
       sqsConfig <- IO(VinylDNSConfig.sqsConfig)
       sqsConnection <- IO(SqsConnection(sqsConfig))

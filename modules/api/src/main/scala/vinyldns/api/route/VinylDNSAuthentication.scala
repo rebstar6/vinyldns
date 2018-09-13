@@ -36,11 +36,9 @@ final case class AuthRejected(reason: String) extends VinylDNSAuthenticationErro
 final case class AccountLocked(reason: String) extends VinylDNSAuthenticationError(reason)
 
 trait VinylDNSAuthenticator {
-
   def authenticate(
       ctx: RequestContext,
       content: String): IO[Either[VinylDNSAuthenticationError, AuthPrincipal]]
-
 }
 
 class ProductionVinylDNSAuthenticator(

@@ -29,7 +29,7 @@ import vinyldns.api.domain.dns.DnsConnection
 import vinyldns.core.domain.record.RecordSetChange
 import vinyldns.core.domain.zone.{ZoneChange, ZoneChangeType}
 import vinyldns.api.engine.sqs.SqsConnection
-import vinyldns.core.repository.DataAccessor
+import vinyldns.api.repository.ApiDataAccessor
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -63,7 +63,7 @@ object ZoneCommandHandler {
       extends ChangeRequest
 
   def mainFlow(
-      dataAccessor: DataAccessor,
+      dataAccessor: ApiDataAccessor,
       sqsConnection: SqsConnection,
       pollingInterval: FiniteDuration,
       pauseSignal: Signal[IO, Boolean])(implicit scheduler: Scheduler): Stream[IO, Unit] = {
@@ -238,7 +238,7 @@ object ProductionZoneCommandHandler {
   def run(
       sqsConnection: SqsConnection,
       processingSignal: Signal[IO, Boolean],
-      dataAccessor: DataAccessor,
+      dataAccessor: ApiDataAccessor,
       config: Config): IO[Unit] = {
     implicit val scheduler: Scheduler =
       Scheduler.fromScheduledExecutorService(Executors.newScheduledThreadPool(2))
