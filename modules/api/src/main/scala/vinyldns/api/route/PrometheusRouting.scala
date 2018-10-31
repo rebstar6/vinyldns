@@ -47,6 +47,7 @@ trait PrometheusRoute extends Directives {
   val prometheusRoute =
     (get & path("metrics" / "prometheus") & parameter('name.*)) { names =>
       val content = renderMetrics(collectorRegistry, names.toSet)
+      println("ASDASdasd")
       complete {
         HttpResponse(entity = HttpEntity(`text/plain; version=0.0.4; charset=utf-8`, content))
       }
