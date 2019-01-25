@@ -93,6 +93,7 @@ object RecordSetValidations {
       case SOA => soaValidations(newRecordSet, zone)
       case PTR => ptrValidations(newRecordSet, zone)
       case SRV => ().asRight // SRV does not go through dotted host check
+      case DS => InvalidRequest("DS adds are not supported").asLeft
       case _ => isNotDotted(newRecordSet, zone)
     }
 
@@ -107,6 +108,7 @@ object RecordSetValidations {
       case SOA => soaValidations(newRecordSet, zone)
       case PTR => ptrValidations(newRecordSet, zone)
       case SRV => ().asRight // SRV does not go through dotted host check
+      case DS => InvalidRequest("DS updates are not supported").asLeft
       case _ => isNotDotted(newRecordSet, zone)
     }
 
@@ -146,6 +148,20 @@ object RecordSetValidations {
     } yield ()
 
   }
+
+//  def dsValidations(
+//                        newRecordSet: RecordSet,
+//                        existingRecordsWithName: List[RecordSet],
+//                        zone: Zone): Either[Throwable, Unit] = {
+//    for {
+//      _ <- isNotOrigin(
+//        newRecordSet,
+//        zone,
+//        "DS RecordSets cannot point to zone origin")
+//      _ <- isNotDotted(newRecordSet, zone)
+//    } yield ()
+//
+//  }
 
   def nsValidations(
       newRecordSet: RecordSet,
