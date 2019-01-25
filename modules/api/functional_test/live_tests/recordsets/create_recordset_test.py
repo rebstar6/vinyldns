@@ -1905,7 +1905,8 @@ def test_create_ds_success(shared_zone_test_context):
 
     client = shared_zone_test_context.ok_vinyldns_client
     zone = shared_zone_test_context.ds_zone
-    record_json = get_recordset_json(zone, 'dskey', 'DS', [{'keyTag': 60485, 'algorithm': 5, 'digestType': 1, 'digest': '2BB183AF5F22588179A53B0A98631FAD1A292118'}])
+    record_data = [{'keytag': 60485, 'algorithm': 5, 'digesttype': 1, 'digest': '2BB183AF5F22588179A53B0A98631FAD1A292118'}]
+    record_json = get_recordset_json(zone, 'dskey', 'DS', record_data)
     result_rs = None
     try:
         result = client.create_recordset(record_json, status=202)
