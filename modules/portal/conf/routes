@@ -6,7 +6,7 @@
 GET           /                                  @controllers.FrontendController.index
 GET           /index                             @controllers.FrontendController.index
 GET           /login                             @controllers.FrontendController.loginPage
-
+GET           /logout                            @controllers.FrontendController.logout
 
 GET           /groups                            @controllers.FrontendController.viewAllGroups
 GET           /groups/:gid                       @controllers.FrontendController.viewGroup(gid: String)
@@ -15,11 +15,11 @@ GET           /zones/:zid                        @controllers.FrontendController
 GET           /batchchanges                      @controllers.FrontendController.viewAllBatchChanges
 GET           /batchchanges/new                  @controllers.FrontendController.viewNewBatchChange
 GET           /batchchanges/:id                  @controllers.FrontendController.viewBatchChange(id: String)
+GET           /download-creds-file/:fileName     @controllers.FrontendController.serveCredsFile(fileName)
 
 ### Routes to process requests, get data ###
 GET           /health                            @controllers.HealthController.health
 POST          /login                             @controllers.VinylDNS.login
-GET           /download-creds-file/:fileName     @controllers.VinylDNS.serveCredsFile(fileName)
 POST          /regenerate-creds                  @controllers.VinylDNS.regenerateCreds
 
 GET           /api/zones                         @controllers.VinylDNS.getZones
@@ -55,7 +55,6 @@ POST          /api/batchchanges                  @controllers.VinylDNS.newBatchC
 
 GET           /callback                          @org.pac4j.play.CallbackController.callback()
 POST          /callback                          @org.pac4j.play.CallbackController.callback()
-GET           /logout                            @org.pac4j.play.LogoutController.logout()
 
 # Map static resources from the /public folder to the /assets URL path
 GET           /public/*file                      controllers.Assets.versioned(path="/public", file: Asset)
