@@ -177,7 +177,7 @@ class VinylDNS @Inject()(
     })
   }
 
-  def getMyGroups(): Action[AnyContent] = userAction.async { implicit request =>
+  def getMyGroups: Action[AnyContent] = userAction.async { implicit request =>
     val queryParameters = new HashMap[String, java.util.List[String]]()
     for {
       (name, values) <- request.queryString
@@ -191,7 +191,7 @@ class VinylDNS @Inject()(
     })
   }
 
-  def getAuthenticatedUserData(): Action[AnyContent] = userAction.async { implicit request =>
+  def getAuthenticatedUserData: Action[AnyContent] = userAction.async { implicit request =>
     Future {
       Ok(Json.toJson(VinylDNS.UserInfo.fromUser(request.user)))
         .withHeaders(cacheHeaders: _*)

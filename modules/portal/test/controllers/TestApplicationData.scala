@@ -18,11 +18,17 @@ package controllers
 import akka.io.dns.RecordType
 import cats.effect.IO
 import org.joda.time.DateTime
+import org.pac4j.core.config.Config
+import org.pac4j.core.profile.CommonProfile
+import org.pac4j.play.scala.{Pac4jScalaTemplateHelper, SecurityComponents}
+import org.pac4j.play.store.PlaySessionStore
 import org.specs2.mock.Mockito
 import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.{Application, Configuration, Environment}
 import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.mvc.{BodyParsers, ControllerComponents, RequestHeader}
+import play.api.test.Helpers.stubControllerComponents
+import play.api.{Application, Configuration, Environment}
 import vinyldns.core.crypto.{CryptoAlgebra, NoOpCrypto}
 import vinyldns.core.domain.membership._
 import vinyldns.core.domain.record._
@@ -233,6 +239,33 @@ trait TestApplicationData { this: Mockito =>
   mockAuth.authenticate("frodo", "secondbreakfast").returns(Success(frodoDetails))
   mockUserRepo.getUser(anyString).returns(IO.pure(Some(frodoUser)))
   mockUserChangeRepo.save(any[UserChange]).returns(IO.pure(newFrodoLog))
+
+  object MockCommonProfile extends CommonProfile {
+    import scala.collection.JavaConverters._
+    super.build(
+      "id",
+      Map[String, AnyRef](
+        testConfig.get[String]("oidc.jwt-username-field").toString
+          -> frodoUser.userName).asJava)
+  }
+
+  def buildMockPac4jScalaTemplateHelper: Pac4jScalaTemplateHelper[CommonProfile] = {
+    val accessor = mock[Pac4jScalaTemplateHelper[CommonProfile]]
+    doReturn(Some(MockCommonProfile)).when(accessor).getCurrentProfile(any[RequestHeader])
+
+    accessor
+  }
+
+  class MockedSecurityComponents() extends SecurityComponents {
+    val components: ControllerComponents = stubControllerComponents()
+    val config: Config = mock[Config]
+    val playSessionStore: PlaySessionStore = mock[PlaySessionStore]
+    val parser: BodyParsers.Default = mock[BodyParsers.Default]
+  }
+
+  val mockControllerComponents: SecurityComponents = new MockedSecurityComponents()
+  implicit val pac4jScalaTemplateHelper: Pac4jScalaTemplateHelper[CommonProfile] =
+    buildMockPac4jScalaTemplateHelper
 
   def app: Application =
     GuiceApplicationBuilder()

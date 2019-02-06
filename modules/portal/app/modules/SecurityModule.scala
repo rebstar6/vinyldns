@@ -77,16 +77,21 @@ class SecurityModule(environment: Environment, configuration: Configuration)
 
   lazy val oidcClient: OidcClient[OidcProfile, OidcConfiguration] = {
     val oidcConfiguration = new OidcConfiguration()
+    // Standard configuration
     oidcConfiguration.setClientId(clientId)
     oidcConfiguration.setSecret(secret)
     oidcConfiguration.setDiscoveryURI(discoveryUrl)
     oidcConfiguration.setWithState(true)
 
+    // Additional security configuration
+    oidcConfiguration.setExpireSessionWithToken(true)
+    oidcConfiguration.setUseNonce(true)
+
     oidcConfiguration.setScope("openid profile email")
     val oidcClient = new OidcClient[OidcProfile, OidcConfiguration](oidcConfiguration)
 
     oidcClient.setCallbackUrlResolver(new NoParameterCallbackUrlResolver())
-    oidcClient.addAuthorizationGenerator { (ctx, profile) =>
+    oidcClient.addAuthorizationGenerator { (_, profile) =>
       profile.addRole("USER")
       profile
     }

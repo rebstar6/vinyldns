@@ -53,10 +53,7 @@ class FrontendController @Inject()(
 
   private val userAction = if (oidcEnabled) {
     Secure.andThen {
-      new OidcFrontendAction(
-        userAccountAccessor.get,
-        userAccountAccessor.create,
-        oidcUsernameField)
+      new OidcFrontendAction(userAccountAccessor.get, userAccountAccessor.create, oidcUsernameField)
     }
   } else {
     Action.andThen(new LdapFrontendAction(userAccountAccessor.get))
@@ -108,6 +105,8 @@ class FrontendController @Inject()(
   }
 
   def viewAllZones(): Action[AnyContent] = userAction.async { implicit request =>
+    print(
+      s"request session data: ${request.session.data.toString}\nrequest headers: ${request.headers.toString}\n\n")
     Future(Ok(views.html.zones.zones(request.user.userName)))
   }
 
