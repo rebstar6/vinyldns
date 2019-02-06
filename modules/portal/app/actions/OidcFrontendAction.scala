@@ -17,11 +17,10 @@
 package actions
 
 import cats.effect.IO
-import controllers.{CacheHeader, UserAccountAccessor, UserDetails, VinylDNS}
-import javax.inject.Inject
+import controllers.CacheHeader
 import org.pac4j.core.profile.CommonProfile
-import org.pac4j.play.scala.{Pac4jScalaTemplateHelper, SecurityComponents}
-import play.api.{Configuration, Logger}
+import org.pac4j.play.scala.Pac4jScalaTemplateHelper
+import play.api.Logger
 import play.api.mvc.Result
 import play.api.mvc.Results.Redirect
 import vinyldns.core.domain.membership.User
@@ -57,9 +56,9 @@ class OidcFrontendAction(
         .withHeaders(cacheHeaders: _*))
 
   // TODO need new screen for this
-  def lockedUserResult: Future[Result] =
+  def lockedUserResult(un: String): Future[Result] =
     Future.successful(
-      Redirect("/").withNewSession
+      Redirect("/noaccess")
         .withHeaders(cacheHeaders: _*))
 
   // already checked for user in DB when this is called; user does not exist
