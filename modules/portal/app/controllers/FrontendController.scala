@@ -50,7 +50,7 @@ class FrontendController @Inject()(
     configuration.get[String]("portal.vinyldns.backend.url")
 
   private val userAction = if (oidcEnabled) {
-    Secure.andThen {
+    Secure("AzureAdClient").andThen {
       new OidcFrontendAction(
         controllerComponents,
         userAccountAccessor.get,
