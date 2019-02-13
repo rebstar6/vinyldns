@@ -56,7 +56,7 @@ GET           /api/batchchanges/:id              @controllers.VinylDNS.getBatchC
 GET           /api/batchchanges                  @controllers.VinylDNS.listBatchChanges
 POST          /api/batchchanges                  @controllers.VinylDNS.newBatchChange
 
-GET           /callback                          @org.pac4j.play.CallbackController.callback()
+GET           /callback/AzureAdClient            @org.pac4j.play.CallbackController.callback()
 
 # Map static resources from the /public folder to the /assets URL path
 GET           /public/*file                      controllers.Assets.versioned(path="/public", file: Asset)
