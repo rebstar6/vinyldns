@@ -228,6 +228,10 @@ class MySqlBatchChangeRepository
                 new org.joda.time.DateTime(result.timestamp("created_time")),
                 Nil,
                 Option(result.string("owner_group_id")),
+                None,
+                None,
+                None,
+                None,
                 batchChangeId
               )
             }
