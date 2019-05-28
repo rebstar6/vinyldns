@@ -18,13 +18,13 @@ package vinyldns.api.domain.batch
 
 import vinyldns.api.domain.batch.BatchChangeInterfaces.BatchResult
 import vinyldns.core.domain.auth.AuthPrincipal
-import vinyldns.core.domain.batch.{BatchChange, BatchChangeInfo, BatchChangeSummaryList}
+import vinyldns.core.domain.batch.{ApprovedBatchChange, BatchChangeInfo, BatchChangeSummaryList}
 
 // $COVERAGE-OFF$
 trait BatchChangeServiceAlgebra {
   def applyBatchChange(
       batchChangeInput: BatchChangeInput,
-      auth: AuthPrincipal): BatchResult[BatchChange]
+      auth: AuthPrincipal): BatchResult[ApprovedBatchChange]
 
   def getBatchChange(id: String, auth: AuthPrincipal): BatchResult[BatchChangeInfo]
 

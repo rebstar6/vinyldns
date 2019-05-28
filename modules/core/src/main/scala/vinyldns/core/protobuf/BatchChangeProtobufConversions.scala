@@ -17,12 +17,7 @@
 package vinyldns.core.protobuf
 
 import cats.syntax.all._
-import vinyldns.core.domain.batch.{
-  SingleAddChange,
-  SingleChange,
-  SingleChangeStatus,
-  SingleDeleteChange
-}
+import vinyldns.core.domain.batch._
 import vinyldns.core.domain.record.RecordType
 import vinyldns.core.protobuf.SingleChangeType.{SingleAddType, SingleChangeType, SingleDeleteType}
 import vinyldns.proto.VinylDNSProto
@@ -39,7 +34,6 @@ object SingleChangeType extends Enumeration {
 
 trait BatchChangeProtobufConversions extends ProtobufConversions {
 
-  /* Currently, we only support the add change type.  When we support additional change we will add them here */
   def fromPB(
       changeType: SingleChangeType,
       change: VinylDNSProto.SingleChange): Either[Throwable, SingleChange] =

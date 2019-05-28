@@ -24,6 +24,14 @@ import vinyldns.core.domain.record.RecordType.RecordType
 
 sealed trait SingleChange {
   val id: String
+  val inputName: String
+  val typ: RecordType
+  val status: SingleChangeStatus
+  val systemMessage: Option[String]
+}
+
+sealed trait ApprovedSingleChange extends SingleChange {
+  val id: String
   val status: SingleChangeStatus
   val systemMessage: Option[String]
   val recordChangeId: Option[String]
@@ -35,14 +43,14 @@ sealed trait SingleChange {
   val zoneName: String
   val recordKey = RecordKey(zoneId, recordName, typ)
 
-  def withFailureMessage(error: String): SingleChange = this match {
+  def withFailureMessage(error: String): ApprovedSingleChange = this match {
     case add: SingleAddChange =>
       add.copy(status = SingleChangeStatus.Failed, systemMessage = Some(error))
     case delete: SingleDeleteChange =>
       delete.copy(status = SingleChangeStatus.Failed, systemMessage = Some(error))
   }
 
-  def withProcessingError(message: Option[String], failedRecordChangeId: String): SingleChange =
+  def withProcessingError(message: Option[String], failedRecordChangeId: String): ApprovedSingleChange =
     this match {
       case add: SingleAddChange =>
         add.copy(
@@ -56,7 +64,7 @@ sealed trait SingleChange {
           recordChangeId = Some(failedRecordChangeId))
     }
 
-  def complete(completeRecordChangeId: String, recordSetId: String): SingleChange = this match {
+  def complete(completeRecordChangeId: String, recordSetId: String): ApprovedSingleChange = this match {
     case add: SingleAddChange =>
       add.copy(
         status = SingleChangeStatus.Complete,
@@ -83,7 +91,7 @@ final case class SingleAddChange(
     recordChangeId: Option[String],
     recordSetId: Option[String],
     id: String = UUID.randomUUID().toString)
-    extends SingleChange
+    extends ApprovedSingleChange
 
 final case class SingleDeleteChange(
     zoneId: String,
@@ -96,16 +104,18 @@ final case class SingleDeleteChange(
     recordChangeId: Option[String],
     recordSetId: Option[String],
     id: String = UUID.randomUUID().toString)
-    extends SingleChange
+    extends ApprovedSingleChange
 
 /*
- - Pending has not yet been processed
+ - UnapprovedFailed means the batch has not been approved, and this change has an error
+ - UnapprovedSuccess means the batch has not been approved, but this change passed validation
+ - Pending has not yet been processed, but the batch change has been approved (the change is ready for processing)
  - Complete has been processed - must have recordChangeId
  - Failed had some error (see systemMessage) - may have recordChangeId, not required
  */
 object SingleChangeStatus extends Enumeration {
   type SingleChangeStatus = Value
-  val Pending, Complete, Failed = Value
+  val Pending, Complete, Failed, UnapprovedFailed, UnapprovedSuccess = Value
 }
 
 case class RecordKey(zoneId: String, recordName: String, recordType: RecordType)

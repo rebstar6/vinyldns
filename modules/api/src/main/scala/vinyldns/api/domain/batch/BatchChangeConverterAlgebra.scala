@@ -22,13 +22,13 @@ import vinyldns.api.domain.batch.BatchTransformations.{
   ExistingRecordSets,
   ExistingZones
 }
-import vinyldns.core.domain.batch.BatchChange
+import vinyldns.core.domain.batch.ApprovedBatchChange
 
 trait BatchChangeConverterAlgebra {
 
   def sendBatchForProcessing(
-      batchChange: BatchChange,
-      existingZones: ExistingZones,
-      existingRecordSets: ExistingRecordSets,
-      ownerGroupId: Option[String]): BatchResult[BatchConversionOutput]
+                              batchChange: ApprovedBatchChange,
+                              existingZones: ExistingZones,
+                              existingRecordSets: ExistingRecordSets,
+                              ownerGroupId: Option[String]): BatchResult[BatchConversionOutput]
 }

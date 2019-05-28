@@ -71,7 +71,7 @@ object BatchTransformations {
     val recordName: String
     val inputChange: ChangeInput
     val recordKey = RecordKey(zone.id, recordName, inputChange.typ)
-    def asNewStoredChange: SingleChange
+    def asNewStoredChange: ApprovedSingleChange
     def isAddChangeForValidation: Boolean
     def isDeleteChangeForValidation: Boolean
   }
@@ -89,7 +89,7 @@ object BatchTransformations {
       recordName: String,
       inputChange: AddChangeInput)
       extends ChangeForValidation {
-    def asNewStoredChange: SingleChange =
+    def asNewStoredChange: ApprovedSingleChange =
       SingleAddChange(
         zone.id,
         zone.name,
@@ -113,7 +113,7 @@ object BatchTransformations {
       recordName: String,
       inputChange: DeleteChangeInput)
       extends ChangeForValidation {
-    def asNewStoredChange: SingleChange =
+    def asNewStoredChange: ApprovedSingleChange =
       SingleDeleteChange(
         zone.id,
         zone.name,
@@ -131,8 +131,8 @@ object BatchTransformations {
   }
 
   final case class BatchConversionOutput(
-      batchChange: BatchChange,
-      recordSetChanges: List[RecordSetChange])
+                                          batchChange: ApprovedBatchChange,
+                                          recordSetChanges: List[RecordSetChange])
 
   final case class ChangeForValidationMap(changes: List[ChangeForValidation]) {
     val innerMap: Map[RecordKey, List[ChangeForValidation]] = changes.groupBy(_.recordKey)

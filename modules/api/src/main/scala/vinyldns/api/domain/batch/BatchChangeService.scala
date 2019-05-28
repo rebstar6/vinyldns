@@ -294,15 +294,16 @@ class BatchChangeService(
   def buildResponse(
       batchChangeInput: BatchChangeInput,
       transformed: ValidatedBatch[ChangeForValidation],
-      auth: AuthPrincipal): Either[BatchChangeErrorResponse, BatchChange] =
+      auth: AuthPrincipal): Either[BatchChangeErrorResponse, ApprovedBatchChange] =
     if (transformed.forall(_.isValid)) {
       val changes = transformed.getValid.map(_.asNewStoredChange)
-      BatchChange(
+      ApprovedBatchChange(
         auth.userId,
         auth.signedInUser.userName,
         batchChangeInput.comments,
         DateTime.now,
         changes,
+        BatchChangeApprovalStatus.AutoApproved,
         batchChangeInput.ownerGroupId).asRight
     } else {
       InvalidBatchChangeResponses(batchChangeInput.changes, transformed).asLeft

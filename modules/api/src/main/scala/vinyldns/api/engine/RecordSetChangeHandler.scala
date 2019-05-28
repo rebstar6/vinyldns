@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
 import vinyldns.api.domain.dns.DnsConnection
 import vinyldns.api.domain.dns.DnsProtocol.NoError
 import vinyldns.api.domain.record.RecordSetHelpers._
-import vinyldns.core.domain.batch.{BatchChangeRepository, SingleChange}
+import vinyldns.core.domain.batch.{BatchChangeRepository, ApprovedSingleChange}
 import vinyldns.core.domain.record._
 
 import scala.concurrent.ExecutionContext
@@ -82,8 +82,8 @@ object RecordSetChangeHandler {
     } yield completedState.change
 
   def updateBatchStatuses(
-      singleChanges: List[SingleChange],
-      recordSetChange: RecordSetChange): List[SingleChange] =
+                           singleChanges: List[ApprovedSingleChange],
+                           recordSetChange: RecordSetChange): List[ApprovedSingleChange] =
     recordSetChange.status match {
       case RecordSetChangeStatus.Complete =>
         singleChanges.map(_.complete(recordSetChange.id, recordSetChange.recordSet.id))
