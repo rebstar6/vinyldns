@@ -131,8 +131,8 @@ object BatchTransformations {
   }
 
   final case class BatchConversionOutput(
-                                          batchChange: ApprovedBatchChange,
-                                          recordSetChanges: List[RecordSetChange])
+      batchChange: ApprovedBatchChange,
+      recordSetChanges: List[RecordSetChange])
 
   final case class ChangeForValidationMap(changes: List[ChangeForValidation]) {
     val innerMap: Map[RecordKey, List[ChangeForValidation]] = changes.groupBy(_.recordKey)

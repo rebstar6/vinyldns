@@ -48,33 +48,54 @@ trait BatchChange {
 
 object BatchChange {
 
-  def apply(userId: String,
-            userName: String,
-            comments: Option[String],
-            createdTimestamp: DateTime,
-            changes: List[SingleChange],
-            approvalStatus: BatchChangeApprovalStatus,
-            ownerGroupId: Option[String] = None,
-            reviewerId: Option[String] = None,
-            reviewComment: Option[String] = None,
-            reviewTimestamp: Option[DateTime] = None,
-            id: String = UUID.randomUUID().toString): BatchChange =
+  def apply(
+      userId: String,
+      userName: String,
+      comments: Option[String],
+      createdTimestamp: DateTime,
+      changes: List[SingleChange],
+      approvalStatus: BatchChangeApprovalStatus,
+      ownerGroupId: Option[String] = None,
+      reviewerId: Option[String] = None,
+      reviewComment: Option[String] = None,
+      reviewTimestamp: Option[DateTime] = None,
+      id: String = UUID.randomUUID().toString): BatchChange =
     approvalStatus match {
-      case BatchChangeApprovalStatus.PendingApproval || BatchChangeApprovalStatus.ManuallyRejected =>
-        UnapprovedBatchChange(userId, userName, comments, createdTimestamp,
-          changes, approvalStatus, ownerGroupId, reviewerId, reviewComment, reviewTimestamp, id)
-      case BatchChangeApprovalStatus.AutoApproved || BatchChangeApprovalStatus.ManuallyApproved =>
+      case BatchChangeApprovalStatus.PendingApproval | BatchChangeApprovalStatus.ManuallyRejected =>
+        UnapprovedBatchChange(
+          userId,
+          userName,
+          comments,
+          createdTimestamp,
+          changes,
+          approvalStatus,
+          ownerGroupId,
+          reviewerId,
+          reviewComment,
+          reviewTimestamp,
+          id)
+      case BatchChangeApprovalStatus.AutoApproved | BatchChangeApprovalStatus.ManuallyApproved =>
         // Note - this assumes that all single changes in a batch can be converted to approved if the status is
         // an approved status. This is the case, though its not the best doing this here
         val changesAsApproved = changes.collect {
           case approved: ApprovedSingleChange => approved
         }
-        ApprovedBatchChange(userId, userName, comments, createdTimestamp,
-          changesAsApproved, approvalStatus, ownerGroupId, reviewerId, reviewComment, reviewTimestamp, id)
+        ApprovedBatchChange(
+          userId,
+          userName,
+          comments,
+          createdTimestamp,
+          changesAsApproved,
+          approvalStatus,
+          ownerGroupId,
+          reviewerId,
+          reviewComment,
+          reviewTimestamp,
+          id)
     }
 }
 
-case class  ApprovedBatchChange(
+case class ApprovedBatchChange(
     userId: String,
     userName: String,
     comments: Option[String],
@@ -85,28 +106,30 @@ case class  ApprovedBatchChange(
     reviewerId: Option[String] = None,
     reviewComment: Option[String] = None,
     reviewTimestamp: Option[DateTime] = None,
-    id: String = UUID.randomUUID().toString) extends BatchChange {
+    id: String = UUID.randomUUID().toString)
+    extends BatchChange {
 
   val status: BatchChangeStatus = statusFromChanges
 }
 
 case class UnapprovedBatchChange(
-                                  userId: String,
-                                  userName: String,
-                                  comments: Option[String],
-                                  createdTimestamp: DateTime,
-                                  changes: List[SingleChange],
-                                  approvalStatus: BatchChangeApprovalStatus,
-                                  ownerGroupId: Option[String] = None,
-                                  reviewerId: Option[String] = None,
-                                  reviewComment: Option[String] = None,
-                                  reviewTimestamp: Option[DateTime] = None,
-                                  id: String = UUID.randomUUID().toString) extends BatchChange {
+    userId: String,
+    userName: String,
+    comments: Option[String],
+    createdTimestamp: DateTime,
+    changes: List[SingleChange],
+    approvalStatus: BatchChangeApprovalStatus,
+    ownerGroupId: Option[String] = None,
+    reviewerId: Option[String] = None,
+    reviewComment: Option[String] = None,
+    reviewTimestamp: Option[DateTime] = None,
+    id: String = UUID.randomUUID().toString)
+    extends BatchChange {
 
   val status: BatchChangeStatus = approvalStatus match {
     case BatchChangeApprovalStatus.PendingApproval => BatchChangeStatus.Pending
     case BatchChangeApprovalStatus.ManuallyRejected => BatchChangeStatus.Failed
-      // should not hit this case - if were here, the batch should instead be an ApprovedBatchChange
+    // should not hit this case - if were here, the batch should instead be an ApprovedBatchChange
     case _ => statusFromChanges
   }
 }
@@ -139,15 +162,15 @@ object BatchChangeApprovalStatus extends Enumeration {
 }
 
 case class BatchChangeInfo(
-                            userId: String,
-                            userName: String,
-                            comments: Option[String],
-                            createdTimestamp: DateTime,
-                            changes: List[SingleChange],
-                            ownerGroupId: Option[String],
-                            id: String,
-                            status: BatchChangeStatus,
-                            ownerGroupName: Option[String]
+    userId: String,
+    userName: String,
+    comments: Option[String],
+    createdTimestamp: DateTime,
+    changes: List[SingleChange],
+    ownerGroupId: Option[String],
+    id: String,
+    status: BatchChangeStatus,
+    ownerGroupName: Option[String]
 )
 
 object BatchChangeInfo {

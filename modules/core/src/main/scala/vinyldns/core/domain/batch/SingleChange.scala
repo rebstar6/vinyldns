@@ -28,6 +28,10 @@ sealed trait SingleChange {
   val typ: RecordType
   val status: SingleChangeStatus
   val systemMessage: Option[String]
+
+  def withFailureMessage(error: String): SingleChange
+  def withProcessingError(message: Option[String], failedRecordChangeId: String): SingleChange
+  def complete(completeRecordChangeId: String, recordSetId: String): SingleChange
 }
 
 sealed trait ApprovedSingleChange extends SingleChange {
@@ -50,7 +54,9 @@ sealed trait ApprovedSingleChange extends SingleChange {
       delete.copy(status = SingleChangeStatus.Failed, systemMessage = Some(error))
   }
 
-  def withProcessingError(message: Option[String], failedRecordChangeId: String): ApprovedSingleChange =
+  def withProcessingError(
+      message: Option[String],
+      failedRecordChangeId: String): ApprovedSingleChange =
     this match {
       case add: SingleAddChange =>
         add.copy(
@@ -64,18 +70,19 @@ sealed trait ApprovedSingleChange extends SingleChange {
           recordChangeId = Some(failedRecordChangeId))
     }
 
-  def complete(completeRecordChangeId: String, recordSetId: String): ApprovedSingleChange = this match {
-    case add: SingleAddChange =>
-      add.copy(
-        status = SingleChangeStatus.Complete,
-        recordChangeId = Some(completeRecordChangeId),
-        recordSetId = Some(recordSetId))
-    case delete: SingleDeleteChange =>
-      delete.copy(
-        status = SingleChangeStatus.Complete,
-        recordChangeId = Some(completeRecordChangeId),
-        recordSetId = Some(recordSetId))
-  }
+  def complete(completeRecordChangeId: String, recordSetId: String): ApprovedSingleChange =
+    this match {
+      case add: SingleAddChange =>
+        add.copy(
+          status = SingleChangeStatus.Complete,
+          recordChangeId = Some(completeRecordChangeId),
+          recordSetId = Some(recordSetId))
+      case delete: SingleDeleteChange =>
+        delete.copy(
+          status = SingleChangeStatus.Complete,
+          recordChangeId = Some(completeRecordChangeId),
+          recordSetId = Some(recordSetId))
+    }
 }
 
 final case class SingleAddChange(

@@ -16,10 +16,14 @@
 
 package vinyldns.mysql.repository
 
+import java.util.UUID
+
 import cats.data._
 import cats.effect._
+import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import scalikejdbc._
+import vinyldns.core.domain.batch.BatchChangeApprovalStatus.BatchChangeApprovalStatus
 import vinyldns.core.domain.batch._
 import vinyldns.core.protobuf.{BatchChangeProtobufConversions, SingleChangeType}
 import vinyldns.core.route.Monitored
@@ -117,12 +121,10 @@ class MySqlBatchChangeRepository
   def getBatchChange(batchChangeId: String): IO[Option[BatchChange]] =
     monitor("repo.BatchChangeJDBC.getBatchChange") {
       val batchChangeFuture = for {
-        batchChangeMeta <- OptionT[IO, BatchChange](getBatchChangeMetadata(batchChangeId))
+        meta <- OptionT[IO, MySqlBatchChangeMetadata](getBatchChangeMetadata(batchChangeId))
         singleChanges <- OptionT.liftF[IO, List[SingleChange]](
           getSingleChangesByBatchChangeId(batchChangeId))
-      } yield {
-        batchChangeMeta.copy(changes = singleChanges)
-      }
+      } yield meta.mergeWithChanges(singleChanges)
       batchChangeFuture.value
     }
 
@@ -131,14 +133,18 @@ class MySqlBatchChangeRepository
       toPB(singleChange) match {
         case Right(data) =>
           val changeType = SingleChangeType.from(singleChange)
+          val approvedSingleChange = singleChange match {
+            case approved: ApprovedSingleChange => Some(approved)
+            case _ => None
+          }
           Seq(
             'inputName -> singleChange.inputName,
             'changeType -> changeType.toString,
             'data -> data.toByteArray,
             'status -> singleChange.status.toString,
-            'recordSetChangeId -> singleChange.recordChangeId,
-            'recordSetId -> singleChange.recordSetId,
-            'zoneId -> singleChange.zoneId,
+            'recordSetChangeId -> approvedSingleChange.map(_.recordChangeId),
+            'recordSetId -> approvedSingleChange.map(_.recordSetId),
+            'zoneId -> approvedSingleChange.map(_.zoneId).getOrElse("unknown"),
             'id -> singleChange.id
           )
         case Left(e) => throw e
@@ -148,7 +154,7 @@ class MySqlBatchChangeRepository
         implicit s: DBSession): Option[BatchChange] =
       GET_BATCH_CHANGE_METADATA_FROM_SINGLE_CHANGE
         .bind(singleChangeId)
-        .map(extractBatchChange(None))
+        .map(extractBatchChangeMeta(None))
         .first
         .apply()
         .map { batchMeta =>
@@ -157,7 +163,7 @@ class MySqlBatchChangeRepository
             .map(extractSingleChange(1))
             .list()
             .apply()
-          batchMeta.copy(changes = changes)
+          batchMeta.mergeWithChanges(changes)
         }
 
     monitor("repo.BatchChangeJDBC.updateSingleChanges") {
@@ -243,30 +249,30 @@ class MySqlBatchChangeRepository
     }
 
   /* getBatchChangeMetadata loads the batch change metadata from the database. It doesn't load the single changes */
-  private def getBatchChangeMetadata(batchChangeId: String): IO[Option[BatchChange]] =
+  private def getBatchChangeMetadata(batchChangeId: String): IO[Option[MySqlBatchChangeMetadata]] =
     monitor("repo.BatchChangeJDBC.getBatchChangeMetadata") {
       IO {
         DB.readOnly { implicit s =>
           GET_BATCH_CHANGE_METADATA
             .bind(batchChangeId)
-            .map(extractBatchChange(Some(batchChangeId)))
+            .map(extractBatchChangeMeta(Some(batchChangeId)))
             .first
             .apply()
         }
       }
     }
 
-  private def extractBatchChange(batchChangeId: Option[String]): WrappedResultSet => BatchChange = {
-    result =>
-      BatchChange(
-        result.string("user_id"),
-        result.string("user_name"),
-        Option(result.string("comments")),
-        new org.joda.time.DateTime(result.timestamp("created_time")),
-        Nil,
-        Option(result.string("owner_group_id")),
-        batchChangeId.getOrElse(result.string("id"))
-      )
+  private def extractBatchChangeMeta(
+      batchChangeId: Option[String]): WrappedResultSet => MySqlBatchChangeMetadata = { result =>
+    MySqlBatchChangeMetadata(
+      result.string("user_id"),
+      result.string("user_name"),
+      Option(result.string("comments")),
+      new org.joda.time.DateTime(result.timestamp("created_time")),
+      BatchChangeApprovalStatus.AutoApproved, // TODO
+      Option(result.string("owner_group_id")),
+      id = batchChangeId.getOrElse(result.string("id"))
+    )
   }
 
   private def saveBatchChange(batchChange: BatchChange)(
@@ -286,7 +292,7 @@ class MySqlBatchChangeRepository
       .apply()
 
     val singleChangesParams = batchChange.changes.zipWithIndex.map {
-      case (singleChange, seqNum) =>
+      case (singleChange: ApprovedSingleChange, seqNum) =>
         toPB(singleChange) match {
           case Right(data) =>
             val changeType = SingleChangeType.from(singleChange)
@@ -329,5 +335,32 @@ class MySqlBatchChangeRepository
       case Right(ok) => ok
       case Left(e) => throw e
     }
+  }
+
+  case class MySqlBatchChangeMetadata(
+      userId: String,
+      userName: String,
+      comments: Option[String],
+      createdTimestamp: DateTime,
+      approvalStatus: BatchChangeApprovalStatus,
+      ownerGroupId: Option[String] = None,
+      reviewerId: Option[String] = None,
+      reviewComment: Option[String] = None,
+      reviewTimestamp: Option[DateTime] = None,
+      id: String = UUID.randomUUID().toString) {
+    def mergeWithChanges(changes: List[SingleChange]): BatchChange =
+      BatchChange(
+        userId,
+        userName,
+        comments,
+        createdTimestamp,
+        changes,
+        approvalStatus,
+        ownerGroupId,
+        reviewerId,
+        reviewComment,
+        reviewTimestamp,
+        id
+      )
   }
 }

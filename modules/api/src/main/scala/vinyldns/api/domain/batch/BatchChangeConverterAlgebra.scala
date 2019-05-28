@@ -27,8 +27,8 @@ import vinyldns.core.domain.batch.ApprovedBatchChange
 trait BatchChangeConverterAlgebra {
 
   def sendBatchForProcessing(
-                              batchChange: ApprovedBatchChange,
-                              existingZones: ExistingZones,
-                              existingRecordSets: ExistingRecordSets,
-                              ownerGroupId: Option[String]): BatchResult[BatchConversionOutput]
+      batchChange: ApprovedBatchChange,
+      existingZones: ExistingZones,
+      existingRecordSets: ExistingRecordSets,
+      ownerGroupId: Option[String]): BatchResult[BatchConversionOutput]
 }

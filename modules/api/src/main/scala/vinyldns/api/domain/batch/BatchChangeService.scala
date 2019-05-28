@@ -62,7 +62,7 @@ class BatchChangeService(
 
   def applyBatchChange(
       batchChangeInput: BatchChangeInput,
-      auth: AuthPrincipal): BatchResult[BatchChange] =
+      auth: AuthPrincipal): BatchResult[ApprovedBatchChange] =
     for {
       existingGroup <- getOwnerGroup(batchChangeInput.ownerGroupId)
       _ <- validateBatchChangeInput(batchChangeInput, existingGroup, auth)
@@ -304,7 +304,8 @@ class BatchChangeService(
         DateTime.now,
         changes,
         BatchChangeApprovalStatus.AutoApproved,
-        batchChangeInput.ownerGroupId).asRight
+        batchChangeInput.ownerGroupId
+      ).asRight
     } else {
       InvalidBatchChangeResponses(batchChangeInput.changes, transformed).asLeft
     }
