@@ -32,20 +32,19 @@ trait MembershipRoute extends Directives {
 
   val membershipService: MembershipServiceAlgebra
 
-  val membershipRoute = path("groups" / Segment) { groupId =>
+  val membershipRoute: Route = path("groups" / Segment) { groupId =>
     get {
       monitor("Endpoint.getGroup") {
-        authenticateAndExecute2(membershipService.getGroup(groupId, _))(group =>
-          complete(StatusCodes.OK, GroupInfo(group)))
+        authenticateAndExecute(membershipService.getGroup(groupId, _)) { group =>
+          complete(StatusCodes.OK, GroupInfo(group))
+        }
       }
     } ~
       delete {
         monitor("Endpoint.deleteGroup") {
-          handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-            execute(membershipService.deleteGroup(groupId, authPrincipal)) { group =>
-              complete(StatusCodes.OK, GroupInfo(group))
-            }
-          })
+          authenticateAndExecute(membershipService.deleteGroup(groupId, _)) { group =>
+            complete(StatusCodes.OK, GroupInfo(group))
+          }
         }
       }
   } ~
@@ -61,11 +60,9 @@ trait MembershipRoute extends Directives {
                   input.description,
                   input.members.map(_.id),
                   input.admins.map(_.id))) { inputGroup: Group =>
-              handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-                execute(membershipService.createGroup(inputGroup, authPrincipal)) { group =>
-                  complete(StatusCodes.OK, GroupInfo(group))
-                }
-              })
+              authenticateAndExecute(membershipService.createGroup(inputGroup, _)) { group =>
+                complete(StatusCodes.OK, GroupInfo(group))
+              }
             }
           }
         }
@@ -83,13 +80,10 @@ trait MembershipRoute extends Directives {
                              | and $MAX_ITEMS_LIMIT inclusive"
                            """.stripMargin
                     ) {
-                      handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-                        execute(membershipService
-                          .listMyGroups(groupNameFilter, startFrom, maxItems, authPrincipal)) {
-                          groups =>
-                            complete(StatusCodes.OK, groups)
-                        }
-                      })
+                      authenticateAndExecute(membershipService
+                        .listMyGroups(groupNameFilter, startFrom, maxItems, _)) { groups =>
+                        complete(StatusCodes.OK, groups)
+                      }
                     }
                   }
                 }
@@ -109,19 +103,17 @@ trait MembershipRoute extends Directives {
                 input.description,
                 input.members.map(_.id),
                 input.admins.map(_.id))) { inputGroup: Group =>
-              handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-                execute(
-                  membershipService.updateGroup(
-                    inputGroup.id,
-                    inputGroup.name,
-                    inputGroup.email,
-                    inputGroup.description,
-                    inputGroup.memberIds,
-                    inputGroup.adminUserIds,
-                    authPrincipal)) { group =>
-                  complete(StatusCodes.OK, GroupInfo(group))
-                }
-              })
+              authenticateAndExecute(
+                membershipService.updateGroup(
+                  inputGroup.id,
+                  inputGroup.name,
+                  inputGroup.email,
+                  inputGroup.description,
+                  inputGroup.memberIds,
+                  inputGroup.adminUserIds,
+                  _)) { group =>
+                complete(StatusCodes.OK, GroupInfo(group))
+              }
             }
           }
         }
@@ -136,12 +128,10 @@ trait MembershipRoute extends Directives {
                 validate(
                   0 < maxItems && maxItems <= MAX_ITEMS_LIMIT,
                   s"maxItems was $maxItems, maxItems must be between 0 exclusive and $MAX_ITEMS_LIMIT inclusive") {
-                  handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-                    execute(membershipService
-                      .listMembers(groupId, startFrom, maxItems, authPrincipal)) { members =>
-                      complete(StatusCodes.OK, members)
-                    }
-                  })
+                  authenticateAndExecute(membershipService
+                    .listMembers(groupId, startFrom, maxItems, _)) { members =>
+                    complete(StatusCodes.OK, members)
+                  }
                 }
               }
           }
@@ -151,11 +141,9 @@ trait MembershipRoute extends Directives {
     path("groups" / Segment / "admins") { groupId =>
       get {
         monitor("Endpoint.listGroupAdmins") {
-          handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-            execute(membershipService.listAdmins(groupId, authPrincipal)) { admins =>
-              complete(StatusCodes.OK, admins)
-            }
-          })
+          authenticateAndExecute(membershipService.listAdmins(groupId, _)) { admins =>
+            complete(StatusCodes.OK, admins)
+          }
         }
       }
     } ~
@@ -168,12 +156,10 @@ trait MembershipRoute extends Directives {
                 validate(
                   0 < maxItems && maxItems <= MAX_ITEMS_LIMIT,
                   s"maxItems was $maxItems, maxItems must be between 0 and $MAX_ITEMS_LIMIT") {
-                  handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-                    execute(membershipService
-                      .getGroupActivity(groupId, startFrom, maxItems, authPrincipal)) { activity =>
-                      complete(StatusCodes.OK, activity)
-                    }
-                  })
+                  authenticateAndExecute(membershipService
+                    .getGroupActivity(groupId, startFrom, maxItems, _)) { activity =>
+                    complete(StatusCodes.OK, activity)
+                  }
                 }
               }
           }
@@ -181,20 +167,16 @@ trait MembershipRoute extends Directives {
       }
     } ~
     (put & path("users" / Segment / "lock") & monitor("Endpoint.lockUser")) { id =>
-      handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-        execute(membershipService.updateUserLockStatus(id, LockStatus.Locked, authPrincipal)) {
-          user =>
-            complete(StatusCodes.OK, UserInfo(user))
-        }
-      })
+      authenticateAndExecute(membershipService.updateUserLockStatus(id, LockStatus.Locked, _)) {
+        user =>
+          complete(StatusCodes.OK, UserInfo(user))
+      }
     } ~
     (put & path("users" / Segment / "unlock") & monitor("Endpoint.unlockUser")) { id =>
-      handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-        execute(membershipService.updateUserLockStatus(id, LockStatus.Unlocked, authPrincipal)) {
-          user =>
-            complete(StatusCodes.OK, UserInfo(user))
-        }
-      })
+      authenticateAndExecute(membershipService.updateUserLockStatus(id, LockStatus.Unlocked, _)) {
+        user =>
+          complete(StatusCodes.OK, UserInfo(user))
+      }
     }
 
   private val invalidQueryHandler = RejectionHandler
@@ -205,26 +187,24 @@ trait MembershipRoute extends Directives {
     }
     .result()
 
-  /*
-    AuthPrincipal => Result[A]
-    A => Route
-   */
-  private def authenticateAndExecute2[A](ap: AuthPrincipal => Result[A])(f: A => Route): Route =
-    handleRejections(validationRejectionHandler)(authenticate { a =>
-      execute(ap(a)) { b =>
-        f(b)
+  /**
+    * Authenticate header and then execute service calls if everything is good
+    *
+    * @param f Retrieve AuthPrincipal if authentication is successful
+    * @param g Function to generate response
+    * @return Route
+    */
+  private def authenticateAndExecute[A](f: AuthPrincipal => Result[A])(g: A => Route): Route =
+    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+      onSuccess(f(authPrincipal).value.unsafeToFuture()) {
+        case Right(a) => g(a)
+        case Left(GroupNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+        case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
+        case Left(GroupAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
+        case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
+        case Left(UserNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+        case Left(InvalidGroupRequestError(msg)) => complete(StatusCodes.BadRequest, msg)
+        case Left(e) => failWith(e)
       }
     })
-
-  private def execute[A](f: => Result[A])(rt: A => Route): Route =
-    onSuccess(f.value.unsafeToFuture()) {
-      case Right(a) => rt(a)
-      case Left(GroupNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
-      case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
-      case Left(GroupAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
-      case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
-      case Left(UserNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
-      case Left(InvalidGroupRequestError(msg)) => complete(StatusCodes.BadRequest, msg)
-      case Left(e) => failWith(e)
-    }
 }

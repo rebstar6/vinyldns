@@ -143,11 +143,10 @@ class VinylDNSService(
 
   // Authenticated routes must go first
   def authenticatedRoutes: server.Route =
-    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      batchChangeRoute(authPrincipal) ~
-        zoneRoute(authPrincipal) ~
-        recordSetRoute(authPrincipal)
-    })
+    batchChangeRoute ~
+      zoneRoute ~
+      recordSetRoute ~
+      membershipRoute
 
   val unloggedUris = Seq(
     Uri.Path("/health"),
@@ -158,12 +157,7 @@ class VinylDNSService(
   val unloggedRoutes
     : Route = healthCheckRoute ~ pingRoute ~ colorRoute ~ statusRoute ~ prometheusRoute
 
-  val unmatchedRoutes = (get & path("doot")) {
-    handleRejections(validationRejectionHandler)(authenticate { _ =>
-      complete(StatusCodes.OK)
-    })
-  }
-
+  // Rejection handler to map 404 to 405
   val rejectionHandler: RejectionHandler =
     RejectionHandler
       .newBuilder()
@@ -178,6 +172,6 @@ class VinylDNSService(
     logRequestResult(VinylDNSService.buildLogEntry(unloggedUris))(
       unloggedRoutes ~ authenticatedRoutes)
   val routes: Route =
-    handleRejections(rejectionHandler)(unloggedRoutes ~ unmatchedRoutes ~ membershipRoute)
+    handleRejections(rejectionHandler)(unloggedRoutes ~ authenticatedRoutes)
 }
 // $COVERAGE-ON$

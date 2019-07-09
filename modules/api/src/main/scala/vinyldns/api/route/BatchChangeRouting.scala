@@ -17,7 +17,6 @@
 package vinyldns.api.route
 
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server
 import akka.http.scaladsl.server.{Directives, RejectionHandler, Route, ValidationRejection}
 import cats.data.EitherT
 import cats.effect._
@@ -33,11 +32,11 @@ trait BatchChangeRoute extends Directives {
 
   final private val MAX_ITEMS_LIMIT: Int = 100
 
-  val batchChangeRoute: AuthPrincipal => server.Route = { authPrincipal: AuthPrincipal =>
+  val batchChangeRoute: Route = {
     val standardBatchChangeRoutes = (post & path("zones" / "batchrecordchanges")) {
       monitor("Endpoint.postBatchChange") {
         entity(as[BatchChangeInput]) { batchChangeInput =>
-          execute(batchChangeService.applyBatchChange(batchChangeInput, authPrincipal)) { chg =>
+          authenticateAndExecute(batchChangeService.applyBatchChange(batchChangeInput, _)) { chg =>
             complete(StatusCodes.Accepted, chg)
           }
         }
@@ -45,7 +44,7 @@ trait BatchChangeRoute extends Directives {
     } ~
       (get & path("zones" / "batchrecordchanges" / Segment)) { id =>
         monitor("Endpoint.getBatchChange") {
-          execute(batchChangeService.getBatchChange(id, authPrincipal)) { chg =>
+          authenticateAndExecute(batchChangeService.getBatchChange(id, _)) { chg =>
             complete(StatusCodes.OK, chg)
           }
         }
@@ -68,9 +67,9 @@ trait BatchChangeRoute extends Directives {
                 validate(
                   0 < maxItems && maxItems <= MAX_ITEMS_LIMIT,
                   s"maxItems was $maxItems, maxItems must be between 1 and $MAX_ITEMS_LIMIT, inclusive.") {
-                  execute(
+                  authenticateAndExecute(
                     batchChangeService.listBatchChangeSummaries(
-                      authPrincipal,
+                      _,
                       startFrom,
                       maxItems,
                       ignoreAccess,
@@ -87,7 +86,7 @@ trait BatchChangeRoute extends Directives {
       (post & path("zones" / "batchrecordchanges" / Segment / "reject")) { id =>
         monitor("Endpoint.rejectBatchChange") {
           entity(as[Option[RejectBatchChangeInput]]) { input =>
-            execute(batchChangeService.rejectBatchChange(id, authPrincipal, input)) { chg =>
+            authenticateAndExecute(batchChangeService.rejectBatchChange(id, _, input)) { chg =>
               complete(StatusCodes.OK, chg)
             }
           // TODO: Update response entity to return modified batch change
@@ -97,7 +96,7 @@ trait BatchChangeRoute extends Directives {
         (post & path("zones" / "batchrecordchanges" / Segment / "approve")) { id =>
           monitor("Endpoint.approveBatchChange") {
             entity(as[Option[ApproveBatchChangeInput]]) { input =>
-              execute(batchChangeService.approveBatchChange(id, authPrincipal, input)) { chg =>
+              authenticateAndExecute(batchChangeService.approveBatchChange(id, _, input)) { chg =>
                 complete(StatusCodes.OK, chg)
               }
             // TODO: Update response entity to return modified batch change
@@ -118,16 +117,26 @@ trait BatchChangeRoute extends Directives {
     }
     .result()
 
-  private def execute[A](f: => EitherT[IO, BatchChangeErrorResponse, A])(rt: A => Route): Route =
-    onSuccess(f.value.unsafeToFuture()) {
-      case Right(a) => rt(a)
-      case Left(ibci: InvalidBatchChangeInput) => complete(StatusCodes.BadRequest, ibci)
-      case Left(crl: InvalidBatchChangeResponses) => complete(StatusCodes.BadRequest, crl)
-      case Left(cnf: BatchChangeNotFound) => complete(StatusCodes.NotFound, cnf.message)
-      case Left(una: UserNotAuthorizedError) => complete(StatusCodes.Forbidden, una.message)
-      case Left(uct: BatchConversionError) => complete(StatusCodes.BadRequest, uct)
-      case Left(bcnpa: BatchChangeNotPendingApproval) =>
-        complete(StatusCodes.BadRequest, bcnpa.message)
-      case Left(uce: UnknownConversionError) => complete(StatusCodes.InternalServerError, uce)
-    }
+  /**
+    * Authenticate header and then execute service calls if everything is good
+    *
+    * @param f Retrieve AuthPrincipal if authentication is successful
+    * @param g Function to generate response
+    * @return Route
+    */
+  private def authenticateAndExecute[A](
+      f: AuthPrincipal => EitherT[IO, BatchChangeErrorResponse, A])(g: A => Route): Route =
+    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+      onSuccess(f(authPrincipal).value.unsafeToFuture()) {
+        case Right(a) => g(a)
+        case Left(ibci: InvalidBatchChangeInput) => complete(StatusCodes.BadRequest, ibci)
+        case Left(crl: InvalidBatchChangeResponses) => complete(StatusCodes.BadRequest, crl)
+        case Left(cnf: BatchChangeNotFound) => complete(StatusCodes.NotFound, cnf.message)
+        case Left(una: UserNotAuthorizedError) => complete(StatusCodes.Forbidden, una.message)
+        case Left(uct: BatchConversionError) => complete(StatusCodes.BadRequest, uct)
+        case Left(bcnpa: BatchChangeNotPendingApproval) =>
+          complete(StatusCodes.BadRequest, bcnpa.message)
+        case Left(uce: UnknownConversionError) => complete(StatusCodes.InternalServerError, uce)
+      }
+    })
 }
