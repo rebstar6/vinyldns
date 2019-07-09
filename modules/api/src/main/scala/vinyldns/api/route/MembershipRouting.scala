@@ -35,11 +35,8 @@ trait MembershipRoute extends Directives {
   val membershipRoute = path("groups" / Segment) { groupId =>
     get {
       monitor("Endpoint.getGroup") {
-        authenticateAndExecute { a =>
-          execute(membershipService.getGroup(groupId, a)) { group =>
-            complete(StatusCodes.OK, GroupInfo(group))
-          }
-        }
+        authenticateAndExecute2(membershipService.getGroup(groupId, _))(group =>
+          complete(StatusCodes.OK, GroupInfo(group)))
       }
     } ~
       delete {
@@ -208,15 +205,15 @@ trait MembershipRoute extends Directives {
     }
     .result()
 
-//  handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-//    execute(membershipService.getGroup(groupId, authPrincipal)) { group =>
-//      complete(StatusCodes.OK, GroupInfo(group))
-//    }
-//  })
-
-  private def authenticateAndExecute[A](ap: AuthPrincipal => Route): Route =
+  /*
+    AuthPrincipal => Result[A]
+    A => Route
+   */
+  private def authenticateAndExecute2[A](ap: AuthPrincipal => Result[A])(f: A => Route): Route =
     handleRejections(validationRejectionHandler)(authenticate { a =>
-      ap(a)
+      execute(ap(a)) { b =>
+        f(b)
+      }
     })
 
   private def execute[A](f: => Result[A])(rt: A => Route): Route =
