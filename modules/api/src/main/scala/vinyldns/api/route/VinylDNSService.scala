@@ -19,7 +19,7 @@ package vinyldns.api.route
 import akka.event.Logging._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{RejectionHandler, Route}
 import akka.http.scaladsl.server.RouteResult.{Complete, Rejected}
 import akka.http.scaladsl.server.directives.LogEntry
 import cats.effect.IO
@@ -146,8 +146,7 @@ class VinylDNSService(
     handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
       batchChangeRoute(authPrincipal) ~
         zoneRoute(authPrincipal) ~
-        recordSetRoute(authPrincipal) ~
-        membershipRoute(authPrincipal)
+        recordSetRoute(authPrincipal)
     })
 
   val unloggedUris = Seq(
@@ -158,9 +157,27 @@ class VinylDNSService(
     Uri.Path("/metrics/prometheus"))
   val unloggedRoutes
     : Route = healthCheckRoute ~ pingRoute ~ colorRoute ~ statusRoute ~ prometheusRoute
+
+  val unmatchedRoutes = (get & path("doot")) {
+    handleRejections(validationRejectionHandler)(authenticate { _ =>
+      complete(StatusCodes.OK)
+    })
+  }
+
+  val rejectionHandler: RejectionHandler =
+    RejectionHandler
+      .newBuilder()
+      .handleNotFound {
+        extractUnmatchedPath { p =>
+          complete((StatusCodes.MethodNotAllowed, s"The requested path [$p] does not exist."))
+        }
+      }
+      .result()
+
   val vinyldnsRoutes: Route =
     logRequestResult(VinylDNSService.buildLogEntry(unloggedUris))(
       unloggedRoutes ~ authenticatedRoutes)
-  val routes = vinyldnsRoutes
+  val routes: Route =
+    handleRejections(rejectionHandler)(unloggedRoutes ~ unmatchedRoutes ~ membershipRoute)
 }
 // $COVERAGE-ON$

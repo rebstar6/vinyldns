@@ -22,7 +22,6 @@ import vinyldns.api.Interfaces.Result
 import vinyldns.api.domain.membership._
 import vinyldns.api.domain.zone.NotAuthorizedError
 import vinyldns.api.route.MembershipJsonProtocol.{CreateGroupInput, UpdateGroupInput}
-import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.domain.membership.{Group, LockStatus}
 
 trait MembershipRoute extends Directives {
@@ -32,20 +31,24 @@ trait MembershipRoute extends Directives {
 
   val membershipService: MembershipServiceAlgebra
 
-  val membershipRoute = { authPrincipal: AuthPrincipal =>
+  val membershipRoute = {
     path("groups" / Segment) { groupId =>
       get {
         monitor("Endpoint.getGroup") {
-          execute(membershipService.getGroup(groupId, authPrincipal)) { group =>
-            complete(StatusCodes.OK, GroupInfo(group))
-          }
+          handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+            execute(membershipService.getGroup(groupId, authPrincipal)) { group =>
+              complete(StatusCodes.OK, GroupInfo(group))
+            }
+          })
         }
       } ~
         delete {
           monitor("Endpoint.deleteGroup") {
-            execute(membershipService.deleteGroup(groupId, authPrincipal)) { group =>
-              complete(StatusCodes.OK, GroupInfo(group))
-            }
+            handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+              execute(membershipService.deleteGroup(groupId, authPrincipal)) { group =>
+                complete(StatusCodes.OK, GroupInfo(group))
+              }
+            })
           }
         }
     } ~
@@ -61,9 +64,11 @@ trait MembershipRoute extends Directives {
                     input.description,
                     input.members.map(_.id),
                     input.admins.map(_.id))) { inputGroup: Group =>
-                execute(membershipService.createGroup(inputGroup, authPrincipal)) { group =>
-                  complete(StatusCodes.OK, GroupInfo(group))
-                }
+                handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+                  execute(membershipService.createGroup(inputGroup, authPrincipal)) { group =>
+                    complete(StatusCodes.OK, GroupInfo(group))
+                  }
+                })
               }
             }
           }
@@ -81,11 +86,13 @@ trait MembershipRoute extends Directives {
                              | and $MAX_ITEMS_LIMIT inclusive"
                            """.stripMargin
                       ) {
-                        execute(membershipService
-                          .listMyGroups(groupNameFilter, startFrom, maxItems, authPrincipal)) {
-                          groups =>
-                            complete(StatusCodes.OK, groups)
-                        }
+                        handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+                          execute(membershipService
+                            .listMyGroups(groupNameFilter, startFrom, maxItems, authPrincipal)) {
+                            groups =>
+                              complete(StatusCodes.OK, groups)
+                          }
+                        })
                       }
                     }
                   }
@@ -105,17 +112,19 @@ trait MembershipRoute extends Directives {
                   input.description,
                   input.members.map(_.id),
                   input.admins.map(_.id))) { inputGroup: Group =>
-                execute(
-                  membershipService.updateGroup(
-                    inputGroup.id,
-                    inputGroup.name,
-                    inputGroup.email,
-                    inputGroup.description,
-                    inputGroup.memberIds,
-                    inputGroup.adminUserIds,
-                    authPrincipal)) { group =>
-                  complete(StatusCodes.OK, GroupInfo(group))
-                }
+                handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+                  execute(
+                    membershipService.updateGroup(
+                      inputGroup.id,
+                      inputGroup.name,
+                      inputGroup.email,
+                      inputGroup.description,
+                      inputGroup.memberIds,
+                      inputGroup.adminUserIds,
+                      authPrincipal)) { group =>
+                    complete(StatusCodes.OK, GroupInfo(group))
+                  }
+                })
               }
             }
           }
@@ -130,11 +139,12 @@ trait MembershipRoute extends Directives {
                   validate(
                     0 < maxItems && maxItems <= MAX_ITEMS_LIMIT,
                     s"maxItems was $maxItems, maxItems must be between 0 exclusive and $MAX_ITEMS_LIMIT inclusive") {
-                    execute(
-                      membershipService.listMembers(groupId, startFrom, maxItems, authPrincipal)) {
-                      members =>
+                    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+                      execute(membershipService
+                        .listMembers(groupId, startFrom, maxItems, authPrincipal)) { members =>
                         complete(StatusCodes.OK, members)
-                    }
+                      }
+                    })
                   }
                 }
             }
@@ -144,9 +154,11 @@ trait MembershipRoute extends Directives {
       path("groups" / Segment / "admins") { groupId =>
         get {
           monitor("Endpoint.listGroupAdmins") {
-            execute(membershipService.listAdmins(groupId, authPrincipal)) { admins =>
-              complete(StatusCodes.OK, admins)
-            }
+            handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+              execute(membershipService.listAdmins(groupId, authPrincipal)) { admins =>
+                complete(StatusCodes.OK, admins)
+              }
+            })
           }
         }
       } ~
@@ -159,10 +171,13 @@ trait MembershipRoute extends Directives {
                   validate(
                     0 < maxItems && maxItems <= MAX_ITEMS_LIMIT,
                     s"maxItems was $maxItems, maxItems must be between 0 and $MAX_ITEMS_LIMIT") {
-                    execute(membershipService
-                      .getGroupActivity(groupId, startFrom, maxItems, authPrincipal)) { activity =>
-                      complete(StatusCodes.OK, activity)
-                    }
+                    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+                      execute(membershipService
+                        .getGroupActivity(groupId, startFrom, maxItems, authPrincipal)) {
+                        activity =>
+                          complete(StatusCodes.OK, activity)
+                      }
+                    })
                   }
                 }
             }
@@ -170,16 +185,20 @@ trait MembershipRoute extends Directives {
         }
       } ~
       (put & path("users" / Segment / "lock") & monitor("Endpoint.lockUser")) { id =>
-        execute(membershipService.updateUserLockStatus(id, LockStatus.Locked, authPrincipal)) {
-          user =>
-            complete(StatusCodes.OK, UserInfo(user))
-        }
+        handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+          execute(membershipService.updateUserLockStatus(id, LockStatus.Locked, authPrincipal)) {
+            user =>
+              complete(StatusCodes.OK, UserInfo(user))
+          }
+        })
       } ~
       (put & path("users" / Segment / "unlock") & monitor("Endpoint.unlockUser")) { id =>
-        execute(membershipService.updateUserLockStatus(id, LockStatus.Unlocked, authPrincipal)) {
-          user =>
-            complete(StatusCodes.OK, UserInfo(user))
-        }
+        handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+          execute(membershipService.updateUserLockStatus(id, LockStatus.Unlocked, authPrincipal)) {
+            user =>
+              complete(StatusCodes.OK, UserInfo(user))
+          }
+        })
       }
   }
 
