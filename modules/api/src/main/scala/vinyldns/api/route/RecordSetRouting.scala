@@ -91,17 +91,16 @@ trait RecordSetRoute extends Directives {
         } ~
         put {
           monitor("Endpoint.updateRecordSet") {
-            entity(as[RecordSet]) { rs =>
-              handleRejections(invalidContentHandler) {
-                validate(
-                  check = rs.zoneId == zoneId,
-                  errorMsg = "Cannot update RecordSet's zoneId attribute"
-                ) {
-                  authenticateAndExecute(recordSetService.updateRecordSet(rs, _)) { rc =>
-                    complete(StatusCodes.Accepted, rc)
-                  }
+            authenticateAndExecuteWithEntity[ZoneCommandResult, RecordSet] {
+              (authPrincipal, recordSet) =>
+                recordSet match {
+                  case badRs if badRs.zoneId != zoneId =>
+                    Left(InvalidRequest("Cannot update RecordSet's zoneId attribute")).toResult
+                  case goodRs =>
+                    recordSetService.updateRecordSet(goodRs, authPrincipal)
                 }
-              }
+            } { rc =>
+              complete(StatusCodes.Accepted, rc)
             }
           }
         }
@@ -144,14 +143,6 @@ trait RecordSetRoute extends Directives {
     .handle {
       case ValidationRejection(msg, _) =>
         complete(StatusCodes.BadRequest, msg)
-    }
-    .result()
-
-  private val invalidContentHandler = RejectionHandler
-    .newBuilder()
-    .handle {
-      case ValidationRejection(msg, _) =>
-        complete(StatusCodes.UnprocessableEntity, msg)
     }
     .result()
 
