@@ -142,13 +142,6 @@ class VinylDNSService(
   val vinylDNSAuthenticator: VinylDNSAuthenticator =
     new ProductionVinylDNSAuthenticator(aws4Authenticator, authPrincipalProvider)
 
-  // Authenticated routes must go first
-  def authenticatedRoutes: server.Route =
-    batchChangeRoute ~
-      zoneRoute ~
-      recordSetRoute ~
-      membershipRoute
-
   val unloggedUris = Seq(
     Uri.Path("/health"),
     Uri.Path("/color"),
@@ -157,6 +150,12 @@ class VinylDNSService(
     Uri.Path("/metrics/prometheus"))
   val unloggedRoutes
     : Route = healthCheckRoute ~ pingRoute ~ colorRoute ~ statusRoute ~ prometheusRoute
+
+  val allRoutes: Route = unloggedRoutes ~
+    batchChangeRoute ~
+    zoneRoute ~
+    recordSetRoute ~
+    membershipRoute
 
   // Rejection handler to map 404 to 405
   val rejectionHandler: RejectionHandler =
@@ -178,9 +177,8 @@ class VinylDNSService(
       .result()
 
   val vinyldnsRoutes: Route =
-    logRequestResult(VinylDNSService.buildLogEntry(unloggedUris))(
-      unloggedRoutes ~ authenticatedRoutes)
+    logRequestResult(VinylDNSService.buildLogEntry(unloggedUris))(allRoutes)
   val routes: Route =
-    handleRejections(rejectionHandler)(unloggedRoutes ~ authenticatedRoutes)
+    handleRejections(rejectionHandler)(allRoutes)
 }
 // $COVERAGE-ON$
