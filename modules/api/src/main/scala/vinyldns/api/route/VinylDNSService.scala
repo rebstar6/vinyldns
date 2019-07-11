@@ -18,7 +18,6 @@ package vinyldns.api.route
 
 import akka.event.Logging._
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server
 import akka.http.scaladsl.server.{MalformedRequestContentRejection, RejectionHandler, Route}
 import akka.http.scaladsl.server.RouteResult.{Complete, Rejected}
 import akka.http.scaladsl.server.directives.LogEntry
