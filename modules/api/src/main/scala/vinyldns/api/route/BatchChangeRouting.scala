@@ -88,7 +88,7 @@ trait BatchChangeRoute extends Directives {
           authenticateAndExecuteWithEntity[BatchChange, Option[RejectBatchChangeInput]]((
               authPrincipal,
               input) => batchChangeService.rejectBatchChange(id, authPrincipal, input)) { chg =>
-            complete(StatusCodes.Accepted, chg)
+            complete(StatusCodes.OK, chg)
           }
           // TODO: Update response entity to return modified batch change
         }

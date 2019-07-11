@@ -26,7 +26,7 @@ import org.joda.time.DateTime
 import org.json4s.JsonDSL._
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import vinyldns.api.domain.batch._
 import vinyldns.core.TestMembershipData._
 import vinyldns.core.domain.record.RecordType._
@@ -44,10 +44,19 @@ class BatchChangeRoutingSpec
     with JsonValidationRejection
     with VinylDNSDirectives
     with VinylDNSJsonProtocol
-    with Matchers {
+    with Matchers
+    with BeforeAndAfterEach {
 
   val batchChangeService: BatchChangeServiceAlgebra = TestBatchChangeService
-  val vinylDNSAuthenticator: VinylDNSAuthenticator = new TestVinylDNSAuthenticator(okAuth)
+  val okAuthenticator: VinylDNSAuthenticator = new TestVinylDNSAuthenticator(okAuth)
+  val noAuthAuthenticator: VinylDNSAuthenticator = new TestVinylDNSAuthenticator(notAuth)
+  val supportUserAuthenticator: VinylDNSAuthenticator = new TestVinylDNSAuthenticator(
+    supportUserAuth)
+  val superUserAuthenticator: VinylDNSAuthenticator = new TestVinylDNSAuthenticator(superUserAuth)
+
+  var vinylDNSAuthenticator: VinylDNSAuthenticator = _
+
+  override def beforeEach(): Unit = vinylDNSAuthenticator = okAuthenticator
 
   import vinyldns.core.domain.batch.SingleChangeStatus._
 
@@ -575,6 +584,7 @@ class BatchChangeRoutingSpec
     }
 
     "return empty list of batch change summaries for the user that called it" in {
+      vinylDNSAuthenticator = noAuthAuthenticator
       Get("/zones/batchrecordchanges") ~> batchChangeRoute ~> check {
         status shouldBe OK
 
@@ -585,6 +595,7 @@ class BatchChangeRoutingSpec
     }
 
     "return all batch changes if ignoreAccess is true and requester is a super user" in {
+      vinylDNSAuthenticator = superUserAuthenticator
       Get("/zones/batchrecordchanges?ignoreAccess=true") ~> batchChangeRoute ~> check {
         status shouldBe OK
 
@@ -599,6 +610,7 @@ class BatchChangeRoutingSpec
 
     "return all Pending batch changes if ignoreAccess is true, approval status is `PendingApproval`," +
       " and requester is a super user" in {
+      vinylDNSAuthenticator = superUserAuthenticator
       Get("/zones/batchrecordchanges?ignoreAccess=true&approvalStatus=PendingApproval") ~>
         batchChangeRoute ~> check {
         status shouldBe OK
@@ -617,6 +629,7 @@ class BatchChangeRoutingSpec
 
   "POST reject batch change" should {
     "return OK if review comment is provided, batch change is PendingApproval, and reviewer is authorized" in {
+      vinylDNSAuthenticator = supportUserAuthenticator
       Post("/zones/batchrecordchanges/pendingBatchId/reject").withEntity(HttpEntity(
         ContentTypes.`application/json`,
         compact(render("comments" -> "some comments")))) ~>
@@ -626,6 +639,7 @@ class BatchChangeRoutingSpec
     }
 
     "return OK if comments are not provided, batch change is PendingApproval, and reviewer is authorized" in {
+      vinylDNSAuthenticator = supportUserAuthenticator
       Post("/zones/batchrecordchanges/pendingBatchId/reject").withEntity(
         HttpEntity(ContentTypes.`application/json`, compact(render("")))) ~>
         batchChangeRoute ~> check {
@@ -651,13 +665,15 @@ class BatchChangeRoutingSpec
       }
     }
 
-    "return OK no request entity is provided" in {
+    "return OK if no request entity is provided" in {
+      vinylDNSAuthenticator = supportUserAuthenticator
       Post("/zones/batchrecordchanges/pendingBatchId/reject") ~> batchChangeRoute ~> check {
         status shouldBe OK
       }
     }
 
     "return BadRequest if batch change is not pending approval" in {
+      vinylDNSAuthenticator = supportUserAuthenticator
       Post("/zones/batchrecordchanges/batchId/reject").withEntity(
         HttpEntity(ContentTypes.`application/json`, compact(render("")))) ~>
         batchChangeRoute ~> check {
@@ -668,6 +684,7 @@ class BatchChangeRoutingSpec
 
   "POST approve batch change" should {
     "return OK if review comment is provided, batch change is PendingApproval, and reviewer is authorized" in {
+      vinylDNSAuthenticator = supportUserAuthenticator
       Post("/zones/batchrecordchanges/pendingBatchId/approve").withEntity(HttpEntity(
         ContentTypes.`application/json`,
         compact(render("comments" -> "some comments")))) ~>
@@ -677,6 +694,7 @@ class BatchChangeRoutingSpec
     }
 
     "return OK if comments are not provided, batch change is PendingApproval, and reviewer is authorized" in {
+      vinylDNSAuthenticator = supportUserAuthenticator
       Post("/zones/batchrecordchanges/pendingBatchId/approve").withEntity(
         HttpEntity(ContentTypes.`application/json`, compact(render("")))) ~>
         batchChangeRoute ~> check {
@@ -693,6 +711,7 @@ class BatchChangeRoutingSpec
     }
 
     "return BadRequest if comments exceed 1024 characters" in {
+      vinylDNSAuthenticator = supportUserAuthenticator
       Post("/zones/batchrecordchanges/pendingBatchId/approve").withEntity(HttpEntity(
         ContentTypes.`application/json`,
         compact(render("reviewComment" -> "a" * 1025)))) ~> Route.seal(batchChangeRoute) ~> check {
@@ -703,12 +722,14 @@ class BatchChangeRoutingSpec
     }
 
     "return OK no request entity is provided" in {
+      vinylDNSAuthenticator = supportUserAuthenticator
       Post("/zones/batchrecordchanges/pendingBatchId/approve") ~> batchChangeRoute ~> check {
         status shouldBe OK
       }
     }
 
     "return BadRequest if batch change is not pending approval" in {
+      vinylDNSAuthenticator = supportUserAuthenticator
       Post("/zones/batchrecordchanges/batchId/approve").withEntity(
         HttpEntity(ContentTypes.`application/json`, compact(render("")))) ~>
         batchChangeRoute ~> check {

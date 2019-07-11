@@ -49,9 +49,15 @@ class MembershipRoutingSpec
     with BeforeAndAfterEach {
 
   val membershipService: MembershipService = mock[MembershipService]
-  val vinylDNSAuthenticator: VinylDNSAuthenticator = new TestVinylDNSAuthenticator(okAuth)
+  val okAuthenticator: VinylDNSAuthenticator = new TestVinylDNSAuthenticator(okAuth)
+  val superUserAuthenticator: VinylDNSAuthenticator = new TestVinylDNSAuthenticator(superUserAuth)
 
-  override protected def beforeEach(): Unit = reset(membershipService)
+  var vinylDNSAuthenticator: VinylDNSAuthenticator = _
+
+  override protected def beforeEach(): Unit = {
+    reset(membershipService)
+    vinylDNSAuthenticator = okAuthenticator
+  }
 
   private def js[A](info: A): String = compact(render(Extraction.decompose(info)))
 
@@ -686,6 +692,7 @@ class MembershipRoutingSpec
   }
   "PUT update user lock status" should {
     "return a 200 response with the user locked" in {
+      vinylDNSAuthenticator = superUserAuthenticator
       val updatedUser = okUser.copy(lockStatus = LockStatus.Locked)
       doReturn(result(updatedUser))
         .when(membershipService)
@@ -702,6 +709,7 @@ class MembershipRoutingSpec
     }
 
     "return a 200 response with the user unlocked" in {
+      vinylDNSAuthenticator = superUserAuthenticator
       val updatedUser = lockedUser.copy(lockStatus = LockStatus.Unlocked)
       doReturn(result(updatedUser))
         .when(membershipService)

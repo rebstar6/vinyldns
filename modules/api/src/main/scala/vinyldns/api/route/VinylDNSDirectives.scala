@@ -33,7 +33,7 @@ import scala.util.control.NonFatal
 
 trait VinylDNSDirectives extends Directives {
 
-  val vinylDNSAuthenticator: VinylDNSAuthenticator
+  def vinylDNSAuthenticator: VinylDNSAuthenticator
 
   def authenticate: Directive1[AuthPrincipal] = extractRequestContext.flatMap { ctx =>
     extractStrictEntity(10.seconds).flatMap { strictEntity =>
