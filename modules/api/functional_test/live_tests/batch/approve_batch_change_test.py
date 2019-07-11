@@ -22,7 +22,12 @@ def test_approve_batch_change_with_comments_exceeding_max_length_fails(shared_zo
     reject_batch_change_input = {
         "reviewComment": "a"*1025
     }
-    errors = client.reject_batch_change("some-id", reject_batch_change_input, status=400)['errors']
+
+    import json
+
+    res = client.reject_batch_change("some-id", reject_batch_change_input, status=400)
+    print("result: " + json.dumps(res, indent=3))
+    errors = res['errors']
     assert_that(errors, contains_inanyorder("Comment length must not exceed 1024 characters."))
 
 @pytest.mark.manual_batch_review

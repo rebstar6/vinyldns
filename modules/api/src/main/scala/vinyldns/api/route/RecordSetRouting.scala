@@ -18,12 +18,14 @@ package vinyldns.api.route
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.{Directives, RejectionHandler, Route, ValidationRejection}
+import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.util.Timeout
 import vinyldns.api.Interfaces._
 import vinyldns.api.domain.record.RecordSetServiceAlgebra
 import vinyldns.api.domain.zone._
 import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.domain.record.RecordSet
+import vinyldns.core.domain.zone.ZoneCommandResult
 
 import scala.concurrent.duration._
 
@@ -47,10 +49,9 @@ trait RecordSetRoute extends Directives {
   val recordSetRoute = path("zones" / Segment / "recordsets") { zoneId =>
     post {
       monitor("Endpoint.addRecordSet") {
-        entity(as[RecordSet]) { rs =>
-          authenticateAndExecute(recordSetService.addRecordSet(rs, _)) { rc =>
-            complete(StatusCodes.Accepted, rc)
-          }
+        authenticateAndExecuteWithEntity[ZoneCommandResult, RecordSet]((authPrincipal, recordSet) =>
+          recordSetService.addRecordSet(recordSet, authPrincipal)) { rc =>
+          complete(StatusCodes.Accepted, rc)
         }
       }
     } ~
@@ -176,6 +177,28 @@ trait RecordSetRoute extends Directives {
         case Left(RecordSetChangeNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
         case Left(InvalidGroupError(msg)) => complete(StatusCodes.UnprocessableEntity, msg)
         case Left(e) => failWith(e)
+      }
+    })
+
+  private def authenticateAndExecuteWithEntity[A, B](f: (AuthPrincipal, B) => Result[A])(
+      g: A => Route)(implicit um: FromRequestUnmarshaller[B]): Route =
+    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+      entity(as[B]) {
+        deserializedEntity =>
+          onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) {
+            case Right(a) => g(a)
+            case Left(ZoneNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+            case Left(RecordSetAlreadyExists(msg)) => complete(StatusCodes.Conflict, msg)
+            case Left(ZoneInactiveError(msg)) => complete(StatusCodes.BadRequest, msg)
+            case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
+            case Left(ZoneUnavailableError(msg)) => complete(StatusCodes.Conflict, msg)
+            case Left(RecordSetNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+            case Left(InvalidRequest(msg)) => complete(StatusCodes.UnprocessableEntity, msg)
+            case Left(PendingUpdateError(msg)) => complete(StatusCodes.Conflict, msg)
+            case Left(RecordSetChangeNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+            case Left(InvalidGroupError(msg)) => complete(StatusCodes.UnprocessableEntity, msg)
+            case Left(e) => failWith(e)
+          }
       }
     })
 }

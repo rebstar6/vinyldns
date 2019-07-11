@@ -18,6 +18,7 @@ package vinyldns.api.route
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
+import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import vinyldns.api.Interfaces.Result
 import vinyldns.api.domain.membership._
 import vinyldns.api.domain.zone.NotAuthorizedError
@@ -51,19 +52,16 @@ trait MembershipRoute extends Directives {
     path("groups") {
       post {
         monitor("Endpoint.createGroup") {
-          entity(as[CreateGroupInput]) { input =>
-            ifValid(
-              Group
-                .build(
-                  input.name,
-                  input.email,
-                  input.description,
-                  input.members.map(_.id),
-                  input.admins.map(_.id))) { inputGroup: Group =>
-              authenticateAndExecute(membershipService.createGroup(inputGroup, _)) { group =>
-                complete(StatusCodes.OK, GroupInfo(group))
-              }
-            }
+          authenticateAndExecuteWithEntity[Group, CreateGroupInput] { (authPrincipal, input) =>
+            val group = Group(
+              input.name,
+              input.email,
+              input.description,
+              memberIds = input.members.map(_.id),
+              adminUserIds = input.admins.map(_.id))
+            membershipService.createGroup(group, authPrincipal)
+          } { group =>
+            complete(StatusCodes.OK, GroupInfo(group))
           }
         }
       } ~
@@ -94,27 +92,17 @@ trait MembershipRoute extends Directives {
     path("groups" / Segment) { _ =>
       put {
         monitor("Endpoint.updateGroup") {
-          entity(as[UpdateGroupInput]) { input =>
-            ifValid(
-              Group.build(
+          authenticateAndExecuteWithEntity[Group, UpdateGroupInput](
+            (authPrincipal, input) =>
+              membershipService.updateGroup(
                 input.id,
                 input.name,
                 input.email,
                 input.description,
-                input.members.map(_.id),
-                input.admins.map(_.id))) { inputGroup: Group =>
-              authenticateAndExecute(
-                membershipService.updateGroup(
-                  inputGroup.id,
-                  inputGroup.name,
-                  inputGroup.email,
-                  inputGroup.description,
-                  inputGroup.memberIds,
-                  inputGroup.adminUserIds,
-                  _)) { group =>
-                complete(StatusCodes.OK, GroupInfo(group))
-              }
-            }
+                (input.members ++ input.admins).map(_.id),
+                input.admins.map(_.id),
+                authPrincipal)) { group =>
+            complete(StatusCodes.OK, GroupInfo(group))
           }
         }
       }
@@ -205,6 +193,24 @@ trait MembershipRoute extends Directives {
         case Left(UserNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
         case Left(InvalidGroupRequestError(msg)) => complete(StatusCodes.BadRequest, msg)
         case Left(e) => failWith(e)
+      }
+    })
+
+  private def authenticateAndExecuteWithEntity[A, B](f: (AuthPrincipal, B) => Result[A])(
+      g: A => Route)(implicit um: FromRequestUnmarshaller[B]): Route =
+    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+      entity(as[B]) {
+        deserializedEntity =>
+          onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) {
+            case Right(a) => g(a)
+            case Left(GroupNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+            case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
+            case Left(GroupAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
+            case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
+            case Left(UserNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+            case Left(InvalidGroupRequestError(msg)) => complete(StatusCodes.BadRequest, msg)
+            case Left(e) => failWith(e)
+          }
       }
     })
 }

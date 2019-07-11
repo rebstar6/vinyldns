@@ -19,12 +19,13 @@ package vinyldns.api.route
 import akka.event.Logging._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server
-import akka.http.scaladsl.server.{RejectionHandler, Route}
+import akka.http.scaladsl.server.{MalformedRequestContentRejection, RejectionHandler, Route}
 import akka.http.scaladsl.server.RouteResult.{Complete, Rejected}
 import akka.http.scaladsl.server.directives.LogEntry
 import cats.effect.IO
 import fs2.concurrent.SignallingRef
 import io.prometheus.client.CollectorRegistry
+import org.json4s.MappingException
 import vinyldns.api.domain.auth.MembershipAuthPrincipalProvider
 import vinyldns.api.domain.batch.BatchChangeServiceAlgebra
 import vinyldns.api.domain.membership.MembershipServiceAlgebra
@@ -161,6 +162,14 @@ class VinylDNSService(
   val rejectionHandler: RejectionHandler =
     RejectionHandler
       .newBuilder()
+      .handle {
+        case MalformedRequestContentRejection(msg, MappingException(_, _)) =>
+          complete(
+            HttpResponse(
+              status = StatusCodes.BadRequest,
+              entity = HttpEntity(ContentTypes.`application/json`, msg)
+            ))
+      }
       .handleNotFound {
         extractUnmatchedPath { p =>
           complete((StatusCodes.MethodNotAllowed, s"The requested path [$p] does not exist."))

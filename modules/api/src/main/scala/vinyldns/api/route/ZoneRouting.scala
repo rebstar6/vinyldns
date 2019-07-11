@@ -17,13 +17,14 @@
 package vinyldns.api.route
 
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.{Directives, RejectionHandler, Route, ValidationRejection}
+import akka.http.scaladsl.server._
 import akka.util.Timeout
 import vinyldns.api.Interfaces._
 import vinyldns.api.crypto.Crypto
 import vinyldns.api.domain.zone._
 import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.domain.zone._
+import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 
 import scala.concurrent.duration._
 
@@ -42,10 +43,10 @@ trait ZoneRoute extends Directives {
   implicit val zoneCmdTimeout: Timeout = Timeout(10.seconds)
 
   val zoneRoute: Route = (post & path("zones") & monitor("Endpoint.createZone")) {
-    entity(as[CreateZoneInput]) { createZoneInput =>
-      authenticateAndExecute(zoneService.connectToZone(encrypt(createZoneInput), _)) { chg =>
-        complete(StatusCodes.Accepted, chg)
-      }
+    authenticateAndExecuteWithEntity[ZoneCommandResult, CreateZoneInput](
+      (authPrincipal, createZoneInput) =>
+        zoneService.connectToZone(encrypt(createZoneInput), authPrincipal)) { chg =>
+      complete(StatusCodes.Accepted, chg)
     }
   } ~
     (get & path("zones") & monitor("Endpoint.listZones")) {
@@ -94,10 +95,10 @@ trait ZoneRoute extends Directives {
       }
     } ~
     (put & path("zones" / Segment) & monitor("Endpoint.updateZone")) { _ =>
-      entity(as[UpdateZoneInput]) { updateZoneInput =>
-        authenticateAndExecute(zoneService.updateZone(encrypt(updateZoneInput), _)) { chg =>
-          complete(StatusCodes.Accepted, chg)
-        }
+      authenticateAndExecuteWithEntity[ZoneCommandResult, UpdateZoneInput](
+        (authPrincipal, updateZoneInput) =>
+          zoneService.updateZone(encrypt(updateZoneInput), authPrincipal)) { chg =>
+        complete(StatusCodes.Accepted, chg)
       }
     } ~
     (post & path("zones" / Segment / "sync") & monitor("Endpoint.syncZone")) { id =>
@@ -121,18 +122,16 @@ trait ZoneRoute extends Directives {
       }
     } ~
     (put & path("zones" / Segment / "acl" / "rules") & monitor("Endpoint.addZoneACLRule")) { id =>
-      entity(as[ACLRuleInfo]) { rule =>
-        authenticateAndExecute(zoneService.addACLRule(id, rule, _)) { chg =>
-          complete(StatusCodes.Accepted, chg)
-        }
+      authenticateAndExecuteWithEntity[ZoneCommandResult, ACLRuleInfo]((authPrincipal, rule) =>
+        zoneService.addACLRule(id, rule, authPrincipal)) { chg =>
+        complete(StatusCodes.Accepted, chg)
       }
     } ~
     (delete & path("zones" / Segment / "acl" / "rules") & monitor("Endpoint.deleteZoneACLRule")) {
       id =>
-        entity(as[ACLRuleInfo]) { rule =>
-          authenticateAndExecute(zoneService.deleteACLRule(id, rule, _)) { chg =>
-            complete(StatusCodes.Accepted, chg)
-          }
+        authenticateAndExecuteWithEntity[ZoneCommandResult, ACLRuleInfo]((authPrincipal, rule) =>
+          zoneService.deleteACLRule(id, rule, authPrincipal)) { chg =>
+          complete(StatusCodes.Accepted, chg)
         }
     }
 
@@ -187,6 +186,31 @@ trait ZoneRoute extends Directives {
         case Left(ZoneInactiveError(msg)) => complete(StatusCodes.BadRequest, msg)
         case Left(InvalidRequest(msg)) => complete(StatusCodes.BadRequest, msg)
         case Left(e) => failWith(e)
+      }
+    })
+
+  private def authenticateAndExecuteWithEntity[A, B](f: (AuthPrincipal, B) => Result[A])(
+      g: A => Route)(implicit um: FromRequestUnmarshaller[B]): Route =
+    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
+      entity(as[B]) {
+        deserializedEntity =>
+          onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) {
+            case Right(a) => g(a)
+            case Left(ZoneAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
+            case Left(ConnectionFailed(_, msg)) => complete(StatusCodes.BadRequest, msg)
+            case Left(ZoneValidationFailed(zone, errors, _)) =>
+              complete(StatusCodes.BadRequest, ZoneRejected(zone, errors))
+            case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
+            case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
+            case Left(ZoneNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+            case Left(ZoneUnavailableError(msg)) => complete(StatusCodes.Conflict, msg)
+            case Left(InvalidSyncStateError(msg)) => complete(StatusCodes.BadRequest, msg)
+            case Left(PendingUpdateError(msg)) => complete(StatusCodes.Conflict, msg)
+            case Left(RecentSyncError(msg)) => complete(StatusCodes.Forbidden, msg)
+            case Left(ZoneInactiveError(msg)) => complete(StatusCodes.BadRequest, msg)
+            case Left(InvalidRequest(msg)) => complete(StatusCodes.BadRequest, msg)
+            case Left(e) => failWith(e)
+          }
       }
     })
 }
