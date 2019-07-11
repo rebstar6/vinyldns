@@ -161,56 +161,43 @@ trait ZoneRoute extends Directives {
     }
     .result()
 
+  // Handle conversion of VinylDNS service result to user response
+  private def sendResponse[A](either: Either[Throwable, A], f: A => Route): Route =
+    either match {
+      case Right(a) => f(a)
+      case Left(ZoneAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
+      case Left(ConnectionFailed(_, msg)) => complete(StatusCodes.BadRequest, msg)
+      case Left(ZoneValidationFailed(zone, errors, _)) =>
+        complete(StatusCodes.BadRequest, ZoneRejected(zone, errors))
+      case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
+      case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
+      case Left(ZoneNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+      case Left(ZoneUnavailableError(msg)) => complete(StatusCodes.Conflict, msg)
+      case Left(InvalidSyncStateError(msg)) => complete(StatusCodes.BadRequest, msg)
+      case Left(PendingUpdateError(msg)) => complete(StatusCodes.Conflict, msg)
+      case Left(RecentSyncError(msg)) => complete(StatusCodes.Forbidden, msg)
+      case Left(ZoneInactiveError(msg)) => complete(StatusCodes.BadRequest, msg)
+      case Left(InvalidRequest(msg)) => complete(StatusCodes.BadRequest, msg)
+      case Left(e) => failWith(e)
+    }
+
   /**
-    * Authenticate header and then execute service calls if everything is good
-    *
-    * @param f Retrieve AuthPrincipal if authentication is successful
-    * @param g Function to generate response
-    * @return Route
+    * Helpers for handling authentication, invoking service call and then generating a response back to user
     */
   private def authenticateAndExecute[A](f: AuthPrincipal => Result[A])(g: A => Route): Route =
     handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      onSuccess(f(authPrincipal).value.unsafeToFuture()) {
-        case Right(a) => g(a)
-        case Left(ZoneAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
-        case Left(ConnectionFailed(_, msg)) => complete(StatusCodes.BadRequest, msg)
-        case Left(ZoneValidationFailed(zone, errors, _)) =>
-          complete(StatusCodes.BadRequest, ZoneRejected(zone, errors))
-        case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
-        case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
-        case Left(ZoneNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
-        case Left(ZoneUnavailableError(msg)) => complete(StatusCodes.Conflict, msg)
-        case Left(InvalidSyncStateError(msg)) => complete(StatusCodes.BadRequest, msg)
-        case Left(PendingUpdateError(msg)) => complete(StatusCodes.Conflict, msg)
-        case Left(RecentSyncError(msg)) => complete(StatusCodes.Forbidden, msg)
-        case Left(ZoneInactiveError(msg)) => complete(StatusCodes.BadRequest, msg)
-        case Left(InvalidRequest(msg)) => complete(StatusCodes.BadRequest, msg)
-        case Left(e) => failWith(e)
+      onSuccess(f(authPrincipal).value.unsafeToFuture()) { result =>
+        sendResponse(result, g)
       }
     })
 
   private def authenticateAndExecuteWithEntity[A, B](f: (AuthPrincipal, B) => Result[A])(
       g: A => Route)(implicit um: FromRequestUnmarshaller[B]): Route =
     handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      entity(as[B]) {
-        deserializedEntity =>
-          onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) {
-            case Right(a) => g(a)
-            case Left(ZoneAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
-            case Left(ConnectionFailed(_, msg)) => complete(StatusCodes.BadRequest, msg)
-            case Left(ZoneValidationFailed(zone, errors, _)) =>
-              complete(StatusCodes.BadRequest, ZoneRejected(zone, errors))
-            case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
-            case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
-            case Left(ZoneNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
-            case Left(ZoneUnavailableError(msg)) => complete(StatusCodes.Conflict, msg)
-            case Left(InvalidSyncStateError(msg)) => complete(StatusCodes.BadRequest, msg)
-            case Left(PendingUpdateError(msg)) => complete(StatusCodes.Conflict, msg)
-            case Left(RecentSyncError(msg)) => complete(StatusCodes.Forbidden, msg)
-            case Left(ZoneInactiveError(msg)) => complete(StatusCodes.BadRequest, msg)
-            case Left(InvalidRequest(msg)) => complete(StatusCodes.BadRequest, msg)
-            case Left(e) => failWith(e)
-          }
+      entity(as[B]) { deserializedEntity =>
+        onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) { result =>
+          sendResponse(result, g)
+        }
       }
     })
 }

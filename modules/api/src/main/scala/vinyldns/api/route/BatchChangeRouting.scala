@@ -117,44 +117,36 @@ trait BatchChangeRoute extends Directives {
     }
     .result()
 
+  private def sendResponse[A](either: Either[BatchChangeErrorResponse, A], f: A => Route): Route =
+    either match {
+      case Right(a) => f(a)
+      case Left(ibci: InvalidBatchChangeInput) => complete(StatusCodes.BadRequest, ibci)
+      case Left(crl: InvalidBatchChangeResponses) => complete(StatusCodes.BadRequest, crl)
+      case Left(cnf: BatchChangeNotFound) => complete(StatusCodes.NotFound, cnf.message)
+      case Left(una: UserNotAuthorizedError) => complete(StatusCodes.Forbidden, una.message)
+      case Left(uct: BatchConversionError) => complete(StatusCodes.BadRequest, uct)
+      case Left(bcnpa: BatchChangeNotPendingApproval) =>
+        complete(StatusCodes.BadRequest, bcnpa.message)
+      case Left(uce: UnknownConversionError) => complete(StatusCodes.InternalServerError, uce)
+    }
+
   /**
-    * Authenticate header and then execute service calls if everything is good
-    *
-    * @param f Retrieve AuthPrincipal if authentication is successful
-    * @param g Function to generate response
-    * @return Route
+    * Helpers for handling authentication, invoking service call and then generating a response back to user
     */
   private def authenticateAndExecute[A](f: AuthPrincipal => BatchResult[A])(g: A => Route): Route =
     handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      onSuccess(f(authPrincipal).value.unsafeToFuture()) {
-        case Right(a) => g(a)
-        case Left(ibci: InvalidBatchChangeInput) => complete(StatusCodes.BadRequest, ibci)
-        case Left(crl: InvalidBatchChangeResponses) => complete(StatusCodes.BadRequest, crl)
-        case Left(cnf: BatchChangeNotFound) => complete(StatusCodes.NotFound, cnf.message)
-        case Left(una: UserNotAuthorizedError) => complete(StatusCodes.Forbidden, una.message)
-        case Left(uct: BatchConversionError) => complete(StatusCodes.BadRequest, uct)
-        case Left(bcnpa: BatchChangeNotPendingApproval) =>
-          complete(StatusCodes.BadRequest, bcnpa.message)
-        case Left(uce: UnknownConversionError) => complete(StatusCodes.InternalServerError, uce)
+      onSuccess(f(authPrincipal).value.unsafeToFuture()) { result =>
+        sendResponse(result, g)
       }
     })
 
   private def authenticateAndExecuteWithEntity[A, B](f: (AuthPrincipal, B) => BatchResult[A])(
       g: A => Route)(implicit um: FromRequestUnmarshaller[B]): Route =
     handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      entity(as[B]) {
-        deserializedEntity =>
-          onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) {
-            case Right(a) => g(a)
-            case Left(ibci: InvalidBatchChangeInput) => complete(StatusCodes.BadRequest, ibci)
-            case Left(crl: InvalidBatchChangeResponses) => complete(StatusCodes.BadRequest, crl)
-            case Left(cnf: BatchChangeNotFound) => complete(StatusCodes.NotFound, cnf.message)
-            case Left(una: UserNotAuthorizedError) => complete(StatusCodes.Forbidden, una.message)
-            case Left(uct: BatchConversionError) => complete(StatusCodes.BadRequest, uct)
-            case Left(bcnpa: BatchChangeNotPendingApproval) =>
-              complete(StatusCodes.BadRequest, bcnpa.message)
-            case Left(uce: UnknownConversionError) => complete(StatusCodes.InternalServerError, uce)
-          }
+      entity(as[B]) { deserializedEntity =>
+        onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) { result =>
+          sendResponse(result, g)
+        }
       }
     })
 }
