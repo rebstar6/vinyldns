@@ -38,7 +38,6 @@ class ZoneRoutingSpec
     with ScalatestRouteTest
     with ZoneRoute
     with VinylDNSJsonProtocol
-    with JsonValidationRejection
     with VinylDNSDirectives
     with OneInstancePerTest
     with Matchers {

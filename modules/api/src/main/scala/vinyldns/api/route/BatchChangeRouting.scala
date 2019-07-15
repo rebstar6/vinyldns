@@ -18,17 +18,31 @@ package vinyldns.api.route
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.{Directives, RejectionHandler, Route, ValidationRejection}
-import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import vinyldns.api.VinylDNSConfig
-import vinyldns.api.domain.batch.BatchChangeInterfaces.BatchResult
-import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.api.domain.batch._
 import vinyldns.core.domain.batch.{BatchChange, BatchChangeApprovalStatus}
 
 trait BatchChangeRoute extends Directives {
-  this: VinylDNSJsonProtocol with VinylDNSDirectives with JsonValidationRejection =>
+  this: VinylDNSJsonProtocol with VinylDNSDirectives =>
 
   val batchChangeService: BatchChangeServiceAlgebra
+
+  object BatchChangeAuthHelper extends AuthenticationBatchResultImprovements {
+    def sendResponse[A](either: Either[BatchChangeErrorResponse, A], f: A => Route): Route =
+      either match {
+        case Right(a) => f(a)
+        case Left(ibci: InvalidBatchChangeInput) => complete(StatusCodes.BadRequest, ibci)
+        case Left(crl: InvalidBatchChangeResponses) => complete(StatusCodes.BadRequest, crl)
+        case Left(cnf: BatchChangeNotFound) => complete(StatusCodes.NotFound, cnf.message)
+        case Left(una: UserNotAuthorizedError) => complete(StatusCodes.Forbidden, una.message)
+        case Left(uct: BatchConversionError) => complete(StatusCodes.BadRequest, uct)
+        case Left(bcnpa: BatchChangeNotPendingApproval) =>
+          complete(StatusCodes.BadRequest, bcnpa.message)
+        case Left(uce: UnknownConversionError) => complete(StatusCodes.InternalServerError, uce)
+      }
+  }
+
+  import BatchChangeAuthHelper._
 
   final private val MAX_ITEMS_LIMIT: Int = 100
 
@@ -116,37 +130,4 @@ trait BatchChangeRoute extends Directives {
         complete(StatusCodes.BadRequest, msg)
     }
     .result()
-
-  private def sendResponse[A](either: Either[BatchChangeErrorResponse, A], f: A => Route): Route =
-    either match {
-      case Right(a) => f(a)
-      case Left(ibci: InvalidBatchChangeInput) => complete(StatusCodes.BadRequest, ibci)
-      case Left(crl: InvalidBatchChangeResponses) => complete(StatusCodes.BadRequest, crl)
-      case Left(cnf: BatchChangeNotFound) => complete(StatusCodes.NotFound, cnf.message)
-      case Left(una: UserNotAuthorizedError) => complete(StatusCodes.Forbidden, una.message)
-      case Left(uct: BatchConversionError) => complete(StatusCodes.BadRequest, uct)
-      case Left(bcnpa: BatchChangeNotPendingApproval) =>
-        complete(StatusCodes.BadRequest, bcnpa.message)
-      case Left(uce: UnknownConversionError) => complete(StatusCodes.InternalServerError, uce)
-    }
-
-  /**
-    * Helpers for handling authentication, invoking service call and then generating a response back to user
-    */
-  private def authenticateAndExecute[A](f: AuthPrincipal => BatchResult[A])(g: A => Route): Route =
-    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      onSuccess(f(authPrincipal).value.unsafeToFuture()) { result =>
-        sendResponse(result, g)
-      }
-    })
-
-  private def authenticateAndExecuteWithEntity[A, B](f: (AuthPrincipal, B) => BatchResult[A])(
-      g: A => Route)(implicit um: FromRequestUnmarshaller[B]): Route =
-    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      entity(as[B]) { deserializedEntity =>
-        onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) { result =>
-          sendResponse(result, g)
-        }
-      }
-    })
 }

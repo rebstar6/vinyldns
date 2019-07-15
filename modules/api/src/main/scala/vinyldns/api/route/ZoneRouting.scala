@@ -19,12 +19,9 @@ package vinyldns.api.route
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import akka.util.Timeout
-import vinyldns.api.Interfaces._
 import vinyldns.api.crypto.Crypto
 import vinyldns.api.domain.zone._
-import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.domain.zone._
-import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 
 import scala.concurrent.duration._
 
@@ -32,7 +29,7 @@ case class GetZoneResponse(zone: ZoneInfo)
 case class ZoneRejected(zone: Zone, errors: List[String])
 
 trait ZoneRoute extends Directives {
-  this: VinylDNSJsonProtocol with VinylDNSDirectives with JsonValidationRejection =>
+  this: VinylDNSJsonProtocol with VinylDNSDirectives =>
 
   val zoneService: ZoneServiceAlgebra
 
@@ -41,6 +38,29 @@ trait ZoneRoute extends Directives {
 
   // Timeout must be long enough to allow the cluster to form
   implicit val zoneCmdTimeout: Timeout = Timeout(10.seconds)
+
+  object ZoneAuthHelper extends AuthenticationResultImprovements {
+    def sendResponse[A](either: Either[Throwable, A], f: A => Route): Route =
+      either match {
+        case Right(a) => f(a)
+        case Left(ZoneAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
+        case Left(ConnectionFailed(_, msg)) => complete(StatusCodes.BadRequest, msg)
+        case Left(ZoneValidationFailed(zone, errors, _)) =>
+          complete(StatusCodes.BadRequest, ZoneRejected(zone, errors))
+        case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
+        case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
+        case Left(ZoneNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+        case Left(ZoneUnavailableError(msg)) => complete(StatusCodes.Conflict, msg)
+        case Left(InvalidSyncStateError(msg)) => complete(StatusCodes.BadRequest, msg)
+        case Left(PendingUpdateError(msg)) => complete(StatusCodes.Conflict, msg)
+        case Left(RecentSyncError(msg)) => complete(StatusCodes.Forbidden, msg)
+        case Left(ZoneInactiveError(msg)) => complete(StatusCodes.BadRequest, msg)
+        case Left(InvalidRequest(msg)) => complete(StatusCodes.BadRequest, msg)
+        case Left(e) => failWith(e)
+      }
+  }
+
+  import ZoneAuthHelper._
 
   val zoneRoute: Route = (post & path("zones") & monitor("Endpoint.createZone")) {
     authenticateAndExecuteWithEntity[ZoneCommandResult, CreateZoneInput](
@@ -160,44 +180,4 @@ trait ZoneRoute extends Directives {
         complete(StatusCodes.BadRequest, msg)
     }
     .result()
-
-  // Handle conversion of VinylDNS service result to user response
-  private def sendResponse[A](either: Either[Throwable, A], f: A => Route): Route =
-    either match {
-      case Right(a) => f(a)
-      case Left(ZoneAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
-      case Left(ConnectionFailed(_, msg)) => complete(StatusCodes.BadRequest, msg)
-      case Left(ZoneValidationFailed(zone, errors, _)) =>
-        complete(StatusCodes.BadRequest, ZoneRejected(zone, errors))
-      case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
-      case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
-      case Left(ZoneNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
-      case Left(ZoneUnavailableError(msg)) => complete(StatusCodes.Conflict, msg)
-      case Left(InvalidSyncStateError(msg)) => complete(StatusCodes.BadRequest, msg)
-      case Left(PendingUpdateError(msg)) => complete(StatusCodes.Conflict, msg)
-      case Left(RecentSyncError(msg)) => complete(StatusCodes.Forbidden, msg)
-      case Left(ZoneInactiveError(msg)) => complete(StatusCodes.BadRequest, msg)
-      case Left(InvalidRequest(msg)) => complete(StatusCodes.BadRequest, msg)
-      case Left(e) => failWith(e)
-    }
-
-  /**
-    * Helpers for handling authentication, invoking service call and then generating a response back to user
-    */
-  private def authenticateAndExecute[A](f: AuthPrincipal => Result[A])(g: A => Route): Route =
-    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      onSuccess(f(authPrincipal).value.unsafeToFuture()) { result =>
-        sendResponse(result, g)
-      }
-    })
-
-  private def authenticateAndExecuteWithEntity[A, B](f: (AuthPrincipal, B) => Result[A])(
-      g: A => Route)(implicit um: FromRequestUnmarshaller[B]): Route =
-    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      entity(as[B]) { deserializedEntity =>
-        onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) { result =>
-          sendResponse(result, g)
-        }
-      }
-    })
 }

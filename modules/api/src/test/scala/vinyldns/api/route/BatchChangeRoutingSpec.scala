@@ -21,6 +21,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import cats.data.EitherT
+import cats.effect._
 import cats.implicits._
 import org.joda.time.DateTime
 import org.json4s.JsonDSL._
@@ -29,19 +30,17 @@ import org.json4s.jackson.JsonMethods._
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import vinyldns.api.domain.batch._
 import vinyldns.core.TestMembershipData._
-import vinyldns.core.domain.record.RecordType._
-import vinyldns.core.domain.record._
-import cats.effect._
 import vinyldns.core.domain.BatchChangeIsEmpty
 import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.domain.batch.BatchChangeApprovalStatus.BatchChangeApprovalStatus
 import vinyldns.core.domain.batch._
+import vinyldns.core.domain.record.RecordType._
+import vinyldns.core.domain.record._
 
 class BatchChangeRoutingSpec
     extends WordSpec
     with ScalatestRouteTest
     with BatchChangeRoute
-    with JsonValidationRejection
     with VinylDNSDirectives
     with VinylDNSJsonProtocol
     with Matchers

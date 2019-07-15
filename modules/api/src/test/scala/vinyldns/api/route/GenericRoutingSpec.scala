@@ -28,7 +28,6 @@ class GenericRoutingSpec
     with ZoneRoute
     with VinylDNSJsonProtocol
     with VinylDNSDirectives
-    with JsonValidationRejection
     with MockitoSugar
     with Matchers {
 
@@ -38,7 +37,7 @@ class GenericRoutingSpec
   "GET" should {
     "return 405 MethodNotAllowed if route doesn't exist" in {
       Get("/no-existo") ~> Route.seal(zoneRoute) ~> check {
-        response.status shouldBe StatusCodes.NotFound
+        response.status shouldBe StatusCodes.MethodNotAllowed
       }
     }
   }

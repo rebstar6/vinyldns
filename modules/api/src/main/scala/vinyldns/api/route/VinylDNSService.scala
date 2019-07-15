@@ -18,13 +18,12 @@ package vinyldns.api.route
 
 import akka.event.Logging._
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.{MalformedRequestContentRejection, RejectionHandler, Route}
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteResult.{Complete, Rejected}
 import akka.http.scaladsl.server.directives.LogEntry
 import cats.effect.IO
 import fs2.concurrent.SignallingRef
 import io.prometheus.client.CollectorRegistry
-import org.json4s.MappingException
 import vinyldns.api.domain.auth.MembershipAuthPrincipalProvider
 import vinyldns.api.domain.batch.BatchChangeServiceAlgebra
 import vinyldns.api.domain.membership.MembershipServiceAlgebra
@@ -132,8 +131,7 @@ class VinylDNSService(
     with StatusRoute
     with PrometheusRoute
     with BatchChangeRoute
-    with VinylDNSJsonProtocol
-    with JsonValidationRejection {
+    with VinylDNSJsonProtocol {
 
   val aws4Authenticator = new Aws4Authenticator
   val authPrincipalProvider =
@@ -156,28 +154,28 @@ class VinylDNSService(
     recordSetRoute ~
     membershipRoute
 
-  // Rejection handler to map 404 to 405
-  val rejectionHandler: RejectionHandler =
-    RejectionHandler
-      .newBuilder()
-      .handle {
-        case MalformedRequestContentRejection(msg, MappingException(_, _)) =>
-          complete(
-            HttpResponse(
-              status = StatusCodes.BadRequest,
-              entity = HttpEntity(ContentTypes.`application/json`, msg)
-            ))
-      }
-      .handleNotFound {
-        extractUnmatchedPath { p =>
-          complete((StatusCodes.MethodNotAllowed, s"The requested path [$p] does not exist."))
-        }
-      }
-      .result()
-
+//  // Rejection handler to map 404 to 405
+//  val rejectionHandler: RejectionHandler =
+//    RejectionHandler
+//      .newBuilder()
+//      .handle {
+//        case MalformedRequestContentRejection(msg, MappingException(_, _)) =>
+//          complete(
+//            HttpResponse(
+//              status = StatusCodes.BadRequest,
+//              entity = HttpEntity(ContentTypes.`application/json`, msg)
+//            ))
+//      }
+//      .handleNotFound {
+//        extractUnmatchedPath { p =>
+//          complete((StatusCodes.MethodNotAllowed, s"The requested path [$p] does not exist."))
+//        }
+//      }
+//      .result()
+//
   val vinyldnsRoutes: Route =
     logRequestResult(VinylDNSService.buildLogEntry(unloggedUris))(allRoutes)
   val routes: Route =
-    handleRejections(rejectionHandler)(allRoutes)
+    handleRejections(validationRejectionHandler)(allRoutes)
 }
 // $COVERAGE-ON$

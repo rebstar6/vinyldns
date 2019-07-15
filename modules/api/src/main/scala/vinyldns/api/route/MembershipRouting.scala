@@ -18,20 +18,33 @@ package vinyldns.api.route
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
-import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
-import vinyldns.api.Interfaces.Result
 import vinyldns.api.domain.membership._
 import vinyldns.api.domain.zone.NotAuthorizedError
 import vinyldns.api.route.MembershipJsonProtocol.{CreateGroupInput, UpdateGroupInput}
-import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.domain.membership.{Group, LockStatus}
 
 trait MembershipRoute extends Directives {
-  this: VinylDNSJsonProtocol with VinylDNSDirectives with JsonValidationRejection =>
+  this: VinylDNSJsonProtocol with VinylDNSDirectives =>
   final private val DEFAULT_MAX_ITEMS: Int = 100
   final private val MAX_ITEMS_LIMIT: Int = 1000
 
   val membershipService: MembershipServiceAlgebra
+
+  object MembershipAuthHelper extends AuthenticationResultImprovements {
+    def sendResponse[A](either: Either[Throwable, A], f: A => Route): Route =
+      either match {
+        case Right(a) => f(a)
+        case Left(GroupNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+        case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
+        case Left(GroupAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
+        case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
+        case Left(UserNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+        case Left(InvalidGroupRequestError(msg)) => complete(StatusCodes.BadRequest, msg)
+        case Left(e) => failWith(e)
+      }
+  }
+
+  import MembershipAuthHelper._
 
   val membershipRoute: Route = path("groups" / Segment) { groupId =>
     get {
@@ -174,37 +187,4 @@ trait MembershipRoute extends Directives {
         complete(StatusCodes.BadRequest, msg)
     }
     .result()
-
-  // Handle conversion of VinylDNS service result to user response
-  private def sendResponse[A](either: Either[Throwable, A], f: A => Route): Route =
-    either match {
-      case Right(a) => f(a)
-      case Left(GroupNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
-      case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
-      case Left(GroupAlreadyExistsError(msg)) => complete(StatusCodes.Conflict, msg)
-      case Left(InvalidGroupError(msg)) => complete(StatusCodes.BadRequest, msg)
-      case Left(UserNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
-      case Left(InvalidGroupRequestError(msg)) => complete(StatusCodes.BadRequest, msg)
-      case Left(e) => failWith(e)
-    }
-
-  /**
-    * Helpers for handling authentication, invoking service call and then generating a response back to user
-    */
-  private def authenticateAndExecute[A](f: AuthPrincipal => Result[A])(g: A => Route): Route =
-    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      onSuccess(f(authPrincipal).value.unsafeToFuture()) { result =>
-        sendResponse(result, g)
-      }
-    })
-
-  private def authenticateAndExecuteWithEntity[A, B](f: (AuthPrincipal, B) => Result[A])(
-      g: A => Route)(implicit um: FromRequestUnmarshaller[B]): Route =
-    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      entity(as[B]) { deserializedEntity =>
-        onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) { result =>
-          sendResponse(result, g)
-        }
-      }
-    })
 }

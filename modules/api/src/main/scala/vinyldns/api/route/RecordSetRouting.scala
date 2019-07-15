@@ -18,12 +18,10 @@ package vinyldns.api.route
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.{Directives, RejectionHandler, Route, ValidationRejection}
-import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.util.Timeout
 import vinyldns.api.Interfaces._
 import vinyldns.api.domain.record.RecordSetServiceAlgebra
 import vinyldns.api.domain.zone._
-import vinyldns.core.domain.auth.AuthPrincipal
 import vinyldns.core.domain.record.RecordSet
 import vinyldns.core.domain.zone.ZoneCommandResult
 
@@ -38,13 +36,33 @@ case class ListRecordSetsResponse(
     recordNameFilter: Option[String] = None)
 
 trait RecordSetRoute extends Directives {
-  this: VinylDNSJsonProtocol with VinylDNSDirectives with JsonValidationRejection =>
+  this: VinylDNSJsonProtocol with VinylDNSDirectives =>
   final private val DEFAULT_MAX_ITEMS: Int = 100
 
   val recordSetService: RecordSetServiceAlgebra
 
   // Timeout must be long enough to allow the cluster to form
   implicit val rsCmdTimeout: Timeout = Timeout(10.seconds)
+
+  object RecordAuthHelper extends AuthenticationResultImprovements {
+    def sendResponse[A](either: Either[Throwable, A], f: A => Route): Route =
+      either match {
+        case Right(a) => f(a)
+        case Left(ZoneNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+        case Left(RecordSetAlreadyExists(msg)) => complete(StatusCodes.Conflict, msg)
+        case Left(ZoneInactiveError(msg)) => complete(StatusCodes.BadRequest, msg)
+        case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
+        case Left(ZoneUnavailableError(msg)) => complete(StatusCodes.Conflict, msg)
+        case Left(RecordSetNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+        case Left(InvalidRequest(msg)) => complete(StatusCodes.UnprocessableEntity, msg)
+        case Left(PendingUpdateError(msg)) => complete(StatusCodes.Conflict, msg)
+        case Left(RecordSetChangeNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
+        case Left(InvalidGroupError(msg)) => complete(StatusCodes.UnprocessableEntity, msg)
+        case Left(e) => failWith(e)
+      }
+  }
+
+  import RecordAuthHelper._
 
   val recordSetRoute = path("zones" / Segment / "recordsets") { zoneId =>
     post {
@@ -145,41 +163,4 @@ trait RecordSetRoute extends Directives {
         complete(StatusCodes.BadRequest, msg)
     }
     .result()
-
-  // Handle conversion of VinylDNS service result to user response
-  private def sendResponse[A](either: Either[Throwable, A], f: A => Route): Route =
-    either match {
-      case Right(a) => f(a)
-      case Left(ZoneNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
-      case Left(RecordSetAlreadyExists(msg)) => complete(StatusCodes.Conflict, msg)
-      case Left(ZoneInactiveError(msg)) => complete(StatusCodes.BadRequest, msg)
-      case Left(NotAuthorizedError(msg)) => complete(StatusCodes.Forbidden, msg)
-      case Left(ZoneUnavailableError(msg)) => complete(StatusCodes.Conflict, msg)
-      case Left(RecordSetNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
-      case Left(InvalidRequest(msg)) => complete(StatusCodes.UnprocessableEntity, msg)
-      case Left(PendingUpdateError(msg)) => complete(StatusCodes.Conflict, msg)
-      case Left(RecordSetChangeNotFoundError(msg)) => complete(StatusCodes.NotFound, msg)
-      case Left(InvalidGroupError(msg)) => complete(StatusCodes.UnprocessableEntity, msg)
-      case Left(e) => failWith(e)
-    }
-
-  /**
-    * Helpers for handling authentication, invoking service call and then generating a response back to user
-    */
-  private def authenticateAndExecute[A](f: AuthPrincipal => Result[A])(g: A => Route): Route =
-    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      onSuccess(f(authPrincipal).value.unsafeToFuture()) { result =>
-        sendResponse(result, g)
-      }
-    })
-
-  private def authenticateAndExecuteWithEntity[A, B](f: (AuthPrincipal, B) => Result[A])(
-      g: A => Route)(implicit um: FromRequestUnmarshaller[B]): Route =
-    handleRejections(validationRejectionHandler)(authenticate { authPrincipal =>
-      entity(as[B]) { deserializedEntity =>
-        onSuccess(f(authPrincipal, deserializedEntity).value.unsafeToFuture()) { result =>
-          sendResponse(result, g)
-        }
-      }
-    })
 }

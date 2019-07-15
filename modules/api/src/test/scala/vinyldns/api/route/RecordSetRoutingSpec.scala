@@ -41,7 +41,6 @@ class RecordSetRoutingSpec
     with ScalatestRouteTest
     with RecordSetRoute
     with VinylDNSJsonProtocol
-    with JsonValidationRejection
     with VinylDNSDirectives
     with Matchers {
 

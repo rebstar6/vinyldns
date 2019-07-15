@@ -42,7 +42,6 @@ class MembershipRoutingSpec
     with ScalatestRouteTest
     with MembershipRoute
     with VinylDNSJsonProtocol
-    with JsonValidationRejection
     with VinylDNSDirectives
     with Matchers
     with MockitoSugar
