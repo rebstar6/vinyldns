@@ -154,25 +154,6 @@ class VinylDNSService(
     recordSetRoute ~
     membershipRoute
 
-//  // Rejection handler to map 404 to 405
-//  val rejectionHandler: RejectionHandler =
-//    RejectionHandler
-//      .newBuilder()
-//      .handle {
-//        case MalformedRequestContentRejection(msg, MappingException(_, _)) =>
-//          complete(
-//            HttpResponse(
-//              status = StatusCodes.BadRequest,
-//              entity = HttpEntity(ContentTypes.`application/json`, msg)
-//            ))
-//      }
-//      .handleNotFound {
-//        extractUnmatchedPath { p =>
-//          complete((StatusCodes.MethodNotAllowed, s"The requested path [$p] does not exist."))
-//        }
-//      }
-//      .result()
-//
   val vinyldnsRoutes: Route =
     logRequestResult(VinylDNSService.buildLogEntry(unloggedUris))(allRoutes)
   val routes: Route =
