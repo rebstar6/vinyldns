@@ -24,6 +24,7 @@ import org.joda.time.DateTime
 import org.scalatest.{BeforeAndAfterEach, EitherValues, Matchers, WordSpec}
 import vinyldns.api.ValidatedBatchMatcherImprovements.containChangeForValidation
 import vinyldns.api._
+import vinyldns.api.domain.auth.AuthPrincipalProvider
 import vinyldns.api.domain.batch.BatchChangeInterfaces.{BatchResult, _}
 import vinyldns.api.domain.batch.BatchTransformations._
 import vinyldns.api.domain.{AccessValidations, _}
@@ -105,10 +106,10 @@ class BatchChangeServiceSpec
     ptrV6Add)
 
   private val pendingChange = SingleAddChange(
-    Some("zoneid"),
-    Some("zonename"),
-    Some("rname"),
-    "inputname",
+    Some("base"),
+    Some("test.com."),
+    Some("inputname"),
+    "inputname.test.com.",
     RecordType.A,
     123,
     AData("2.2.2.2"),
@@ -233,6 +234,13 @@ class BatchChangeServiceSpec
       IO.pure(dbZones.filter(z => zoneNames.exists(z.name.endsWith)))
   }
 
+  object TestAuth extends AuthPrincipalProvider {
+    def getAuthPrincipal(accessKey: String): IO[Option[AuthPrincipal]] = IO.pure(None)
+
+    def getAuthPrincipalByUserId(userId: String): IO[Option[AuthPrincipal]] =
+      IO.pure(Some(okAuth))
+  }
+
   private val underTest = new BatchChangeService(
     TestZoneRepo,
     TestRecordSetRepo,
@@ -240,7 +248,9 @@ class BatchChangeServiceSpec
     validations,
     batchChangeRepo,
     EmptyBatchConverter,
-    false)
+    false,
+    TestAuth
+  )
 
   private val underTestManualEnabled = new BatchChangeService(
     TestZoneRepo,
@@ -249,7 +259,9 @@ class BatchChangeServiceSpec
     validations,
     batchChangeRepo,
     EmptyBatchConverter,
-    true)
+    true,
+    TestAuth
+  )
 
   "applyBatchChange" should {
     "succeed if all inputs are good" in {
@@ -330,8 +342,9 @@ class BatchChangeServiceSpec
           auth.signedInUser.userName,
           None,
           DateTime.now,
-          List(pendingChange),
-          approvalStatus = BatchChangeApprovalStatus.PendingApproval)
+          List(),
+          approvalStatus = BatchChangeApprovalStatus.PendingApproval
+        )
       batchChangeRepo.save(batchChange)
 
       val result =
@@ -378,7 +391,7 @@ class BatchChangeServiceSpec
           auth.signedInUser.userName,
           None,
           DateTime.now,
-          List(),
+          List(pendingChange),
           approvalStatus = BatchChangeApprovalStatus.PendingApproval)
       batchChangeRepo.save(batchChange)
 
@@ -396,7 +409,7 @@ class BatchChangeServiceSpec
           auth.signedInUser.userName,
           None,
           DateTime.now,
-          List(),
+          List(pendingChange),
           approvalStatus = BatchChangeApprovalStatus.AutoApproved)
       batchChangeRepo.save(batchChange)
 
@@ -416,17 +429,31 @@ class BatchChangeServiceSpec
           auth.signedInUser.userName,
           None,
           DateTime.now,
-          List(),
-          approvalStatus = BatchChangeApprovalStatus.PendingApproval)
+          List(pendingChange),
+          approvalStatus = BatchChangeApprovalStatus.PendingApproval
+        )
       batchChangeRepo.save(batchChange)
 
       val result =
         rightResultOf(
-          underTest
-            .approveBatchChange(batchChange.id, supportUserAuth, ApproveBatchChangeInput())
+          underTestManualEnabled
+            .approveBatchChange(
+              batchChange.id,
+              supportUserAuth,
+              ApproveBatchChangeInput(Some("test comment")))
             .value)
 
-      result shouldBe batchChange
+      result.userId shouldBe batchChange.userId
+      result.userName shouldBe batchChange.userName
+      result.comments shouldBe batchChange.comments
+      result.createdTimestamp shouldBe batchChange.createdTimestamp
+      result.changes shouldBe batchChange.changes
+      result.ownerGroupId shouldBe batchChange.ownerGroupId
+      result.id shouldBe batchChange.id
+
+      result.approvalStatus shouldBe BatchChangeApprovalStatus.ManuallyApproved
+      result.reviewerId shouldBe Some(supportUserAuth.userId)
+      result.reviewComment shouldBe Some("test comment")
     }
 
     "fail if the batchChange is not PendingApproval" in {
@@ -688,7 +715,8 @@ class BatchChangeServiceSpec
         validations,
         batchChangeRepo,
         EmptyBatchConverter,
-        false)
+        false,
+        TestAuth)
 
       val ip = "2001:0db8:0000:0000:0000:ff00:0042:8329"
       val possibleZones = List(
@@ -722,7 +750,8 @@ class BatchChangeServiceSpec
         validations,
         batchChangeRepo,
         EmptyBatchConverter,
-        false)
+        false,
+        TestAuth)
 
       val ip1 = "::1"
       val possibleZones1 = (5 to 16).map(num0s => ("0." * num0s) + "ip6.arpa.")
