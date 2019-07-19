@@ -377,7 +377,10 @@ class BatchChangeService(
       transformed: ValidatedBatch[ChangeForValidation],
       reviewInfo: BatchChangeReviewInfo): Either[BatchChangeErrorResponse, BatchChange] =
     if (transformed.forall(_.isValid)) {
-      val changes = transformed.getValid.map(_.asNewStoredChange)
+      val changes = transformed.getValid.zip(existingBatchChange.changes).map {
+        case (newValidation, existing) => newValidation.asStoredChangeWithId(existing.id)
+      }
+
       BatchChange(
         existingBatchChange.userId,
         existingBatchChange.userName,
