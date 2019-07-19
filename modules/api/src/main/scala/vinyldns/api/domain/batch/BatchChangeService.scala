@@ -75,6 +75,22 @@ class BatchChangeService(
       batchChangeInput: BatchChangeInput,
       auth: AuthPrincipal): BatchResult[BatchChange] =
     for {
+      validationOutput <- applyBatchChangeValidationFlow(batchChangeInput, auth)
+      changeForConversion <- buildResponse(
+        batchChangeInput,
+        validationOutput.validatedChanges,
+        auth).toBatchResult
+      serviceCompleteBatch <- convertOrSave(
+        changeForConversion,
+        validationOutput.existingZones,
+        validationOutput.existingRecordSets,
+        batchChangeInput.ownerGroupId)
+    } yield serviceCompleteBatch
+
+  def applyBatchChangeValidationFlow(
+      batchChangeInput: BatchChangeInput,
+      auth: AuthPrincipal): BatchResult[BatchValidationFlowOutput] =
+    for {
       existingGroup <- getOwnerGroup(batchChangeInput.ownerGroupId)
       _ <- validateBatchChangeInput(batchChangeInput, existingGroup, auth)
       inputValidatedSingleChanges = validateInputChanges(batchChangeInput.changes)
@@ -87,13 +103,7 @@ class BatchChangeService(
         recordSets,
         auth,
         batchChangeInput.ownerGroupId)
-      changeForConversion <- buildResponse(batchChangeInput, validatedSingleChanges, auth).toBatchResult
-      serviceCompleteBatch <- convertOrSave(
-        changeForConversion,
-        zoneMap,
-        recordSets,
-        batchChangeInput.ownerGroupId)
-    } yield serviceCompleteBatch
+    } yield BatchValidationFlowOutput(validatedSingleChanges, zoneMap, recordSets)
 
   def rejectBatchChange(
       batchChangeId: String,
@@ -115,12 +125,26 @@ class BatchChangeService(
     for {
       batchChange <- getExistingBatchChange(batchChangeId)
       _ <- validateBatchChangeApproval(batchChange, authPrincipal).toBatchResult
-      _ = BatchChangeInput(batchChange)
-      _ <- EitherT.fromOptionF[IO, BatchChangeErrorResponse, AuthPrincipal](
+      asInput = BatchChangeInput(batchChange)
+      requesterAuth <- EitherT.fromOptionF(
         authProvider.getAuthPrincipalByUserId(batchChange.userId),
         BatchRequesterNotFound(batchChange.userId)
       )
-    } yield batchChange
+      reviewInfo = BatchChangeReviewInfo(
+        authPrincipal.userId,
+        approveBatchChangeInput.reviewComment)
+      validationOutput <- applyBatchChangeValidationFlow(asInput, requesterAuth)
+      changeForConversion <- buildResponseForApprover(
+        batchChange,
+        asInput,
+        validationOutput.validatedChanges,
+        reviewInfo).toBatchResult
+      serviceCompleteBatch <- convertOrSave(
+        changeForConversion,
+        validationOutput.existingZones,
+        validationOutput.existingRecordSets,
+        batchChange.ownerGroupId)
+    } yield serviceCompleteBatch
 
   def getBatchChange(id: String, auth: AuthPrincipal): BatchResult[BatchChangeInfo] =
     for {
@@ -346,6 +370,33 @@ class BatchChangeService(
       InvalidBatchChangeResponses(batchChangeInput.changes, transformed).asLeft
     }
   }
+
+  def buildResponseForApprover(
+      existingBatchChange: BatchChange,
+      batchChangeInput: BatchChangeInput,
+      transformed: ValidatedBatch[ChangeForValidation],
+      reviewInfo: BatchChangeReviewInfo): Either[BatchChangeErrorResponse, BatchChange] =
+    if (transformed.forall(_.isValid)) {
+      val changes = transformed.getValid.zip(existingBatchChange.changes).map {
+        case (newValidation, existing) => newValidation.asStoredChangeWithId(existing.id)
+      }
+
+      BatchChange(
+        existingBatchChange.userId,
+        existingBatchChange.userName,
+        existingBatchChange.comments,
+        existingBatchChange.createdTimestamp,
+        changes,
+        existingBatchChange.ownerGroupId,
+        BatchChangeApprovalStatus.ManuallyApproved,
+        Some(reviewInfo.reviewerId),
+        reviewInfo.reviewComment,
+        Some(reviewInfo.reviewTimestamp),
+        id = existingBatchChange.id
+      ).asRight
+    } else {
+      InvalidBatchChangeResponses(batchChangeInput.changes, transformed).asLeft
+    }
 
   def convertOrSave(
       batchChange: BatchChange,
