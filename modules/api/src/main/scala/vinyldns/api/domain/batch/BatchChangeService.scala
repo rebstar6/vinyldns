@@ -128,7 +128,7 @@ class BatchChangeService(
       asInput = BatchChangeInput(batchChange)
       requesterAuth <- EitherT.fromOptionF(
         authProvider.getAuthPrincipalByUserId(batchChange.userId),
-        UnknownConversionError("TODO") //TODO this should be some other error
+        BatchRequesterNotFound(batchChange.userId)
       )
       reviewInfo = BatchChangeReviewInfo(
         authPrincipal.userId,

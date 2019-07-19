@@ -136,6 +136,7 @@ trait BatchChangeRoute extends Directives {
       case Left(uct: BatchConversionError) => complete(StatusCodes.BadRequest, uct)
       case Left(bcnpa: BatchChangeNotPendingApproval) =>
         complete(StatusCodes.BadRequest, bcnpa.message)
+      case Left(brnf: BatchRequesterNotFound) => complete(StatusCodes.NotFound, brnf.message)
       case Left(uce: UnknownConversionError) => complete(StatusCodes.InternalServerError, uce)
     }
 }
