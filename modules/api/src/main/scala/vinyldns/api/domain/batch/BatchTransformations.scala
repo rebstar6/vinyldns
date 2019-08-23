@@ -256,6 +256,7 @@ object BatchTransformations {
       proposedRecordData: Set[RecordData],
       logicalChangeType: LogicalChangeType)
 
+
   final case class BatchValidationFlowOutput(
       validatedChanges: ValidatedBatch[ChangeForValidation],
       existingZones: ExistingZones,
