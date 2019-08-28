@@ -25,7 +25,8 @@ import vinyldns.api.domain.batch.BatchChangeInterfaces._
 import vinyldns.api.domain.batch.BatchTransformations.{
   BatchConversionOutput,
   ExistingRecordSets,
-  ExistingZones
+  ExistingZones,
+  keepUnownedGroupKey
 }
 import vinyldns.api.domain.record.RecordSetChangeGenerator
 import vinyldns.core.domain.record
@@ -42,23 +43,29 @@ class BatchChangeConverter(batchChangeRepo: BatchChangeRepository, messageQueue:
   def sendBatchForProcessing(
       batchChange: BatchChange,
       existingZones: ExistingZones,
-      existingRecordSets: ExistingRecordSets,
-      ownerGroupId: Option[String]): BatchResult[BatchConversionOutput] = {
+      existingRecordSets: ExistingRecordSets): BatchResult[BatchConversionOutput] = {
     logger.info(
       s"Converting BatchChange [${batchChange.id}] with SingleChanges [${batchChange.changes.map(_.id)}]")
+
+    val batchOwnerHolderFix = batchChange.ownerGroupId
+      .collect {
+        case `keepUnownedGroupKey` => batchChange.copy(ownerGroupId = None)
+      }
+      .getOrElse(batchChange)
+
     for {
       recordSetChanges <- createRecordSetChangesForBatch(
-        batchChange.changes,
+        batchOwnerHolderFix.changes,
         existingZones,
         existingRecordSets,
-        batchChange.userId,
-        ownerGroupId).toRightBatchResult
-      _ <- allChangesWereConverted(batchChange.changes, recordSetChanges)
+        batchOwnerHolderFix.userId,
+        batchOwnerHolderFix.ownerGroupId).toRightBatchResult
+      _ <- allChangesWereConverted(batchOwnerHolderFix.changes, recordSetChanges)
       _ <- batchChangeRepo
-        .save(batchChange)
+        .save(batchOwnerHolderFix)
         .toBatchResult // need to save the change before queueing, backend processing expects the changes to exist
       queued <- putChangesOnQueue(recordSetChanges)
-      changeToStore = updateWithQueueingFailures(batchChange, queued)
+      changeToStore = updateWithQueueingFailures(batchOwnerHolderFix, queued)
       _ <- storeQueuingFailures(changeToStore)
     } yield BatchConversionOutput(changeToStore, recordSetChanges)
   }

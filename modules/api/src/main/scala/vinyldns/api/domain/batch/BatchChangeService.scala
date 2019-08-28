@@ -104,8 +104,7 @@ class BatchChangeService(
       serviceCompleteBatch <- convertOrSave(
         changeForConversion,
         validationOutput.existingZones,
-        validationOutput.existingRecordSets,
-        batchChangeInput.ownerGroupId)
+        validationOutput.existingRecordSets)
     } yield serviceCompleteBatch
 
   def applyBatchChangeValidationFlow(
@@ -167,8 +166,7 @@ class BatchChangeService(
       serviceCompleteBatch <- convertOrSave(
         changeForConversion,
         validationOutput.existingZones,
-        validationOutput.existingRecordSets,
-        batchChange.ownerGroupId)
+        validationOutput.existingRecordSets)
     } yield serviceCompleteBatch
 
   def cancelBatchChange(
@@ -271,8 +269,12 @@ class BatchChangeService(
     }
 
   def getOwnerGroup(ownerGroupId: Option[String]): BatchResult[Option[Group]] = {
+    val excludeKeepOwnershipHolder = ownerGroupId.flatMap {
+      case `keepUnownedGroupKey` => None
+      case grpId => Some(grpId)
+    }
     val ownerGroup = for {
-      groupId <- OptionT.fromOption[IO](ownerGroupId)
+      groupId <- OptionT.fromOption[IO](excludeKeepOwnershipHolder)
       group <- OptionT(groupRepository.getGroup(groupId))
     } yield group
     ownerGroup.value.toBatchResult
@@ -469,28 +471,28 @@ class BatchChangeService(
   def convertOrSave(
       batchChange: BatchChange,
       existingZones: ExistingZones,
-      existingRecordSets: ExistingRecordSets,
-      ownerGroupId: Option[String]): BatchResult[BatchChange] = batchChange.approvalStatus match {
-    case AutoApproved =>
-      // send on to the converter, it will be saved there
-      batchChangeConverter
-        .sendBatchForProcessing(batchChange, existingZones, existingRecordSets, ownerGroupId)
-        .map(_.batchChange)
-    case ManuallyApproved if manualReviewEnabled =>
-      // send on to the converter, it will be saved there
-      batchChangeConverter
-        .sendBatchForProcessing(batchChange, existingZones, existingRecordSets, ownerGroupId)
-        .map(_.batchChange)
-    case PendingReview if manualReviewEnabled =>
-      // save the change, will need to return to it later on approval
-      batchChangeRepo.save(batchChange).toBatchResult
-    case _ =>
-      // this should not be called with a rejected change (or if manual review is off)!
-      logger.error(
-        s"convertOrSave called with a rejected batch change; " +
-          s"batchChangeId=${batchChange.id}; manualReviewEnabled=$manualReviewEnabled")
-      UnknownConversionError("Cannot convert a rejected batch change").toLeftBatchResult
-  }
+      existingRecordSets: ExistingRecordSets): BatchResult[BatchChange] =
+    batchChange.approvalStatus match {
+      case AutoApproved =>
+        // send on to the converter, it will be saved there
+        batchChangeConverter
+          .sendBatchForProcessing(batchChange, existingZones, existingRecordSets)
+          .map(_.batchChange)
+      case ManuallyApproved if manualReviewEnabled =>
+        // send on to the converter, it will be saved there
+        batchChangeConverter
+          .sendBatchForProcessing(batchChange, existingZones, existingRecordSets)
+          .map(_.batchChange)
+      case PendingReview if manualReviewEnabled =>
+        // save the change, will need to return to it later on approval
+        batchChangeRepo.save(batchChange).toBatchResult
+      case _ =>
+        // this should not be called with a rejected change (or if manual review is off)!
+        logger.error(
+          s"convertOrSave called with a rejected batch change; " +
+            s"batchChangeId=${batchChange.id}; manualReviewEnabled=$manualReviewEnabled")
+        UnknownConversionError("Cannot convert a rejected batch change").toLeftBatchResult
+    }
 
   def addOwnerGroupNamesToSummaries(
       summaries: List[BatchChangeSummary],

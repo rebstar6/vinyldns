@@ -110,6 +110,7 @@ class BatchChangeValidations(
       authPrincipal: AuthPrincipal): SingleValidation[Unit] =
     (ownerGroupId, existingGroup) match {
       case (None, _) => ().validNel
+      case (Some(`keepUnownedGroupKey`), _) => ().validNel
       case (Some(groupId), None) => GroupDoesNotExist(groupId).invalidNel
       case (Some(groupId), Some(_)) =>
         if (authPrincipal.isGroupMember(groupId) || authPrincipal.isSuper) ().validNel

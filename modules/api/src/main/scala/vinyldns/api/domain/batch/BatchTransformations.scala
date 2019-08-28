@@ -37,6 +37,8 @@ object SupportedBatchChangeRecordTypes {
 // ALL of these are subject to change as implementation needs
 object BatchTransformations {
 
+  val keepUnownedGroupKey: String = "keep-unowned"
+
   final case class ExistingZones(zones: Set[Zone]) {
     val zoneMap: Map[String, Zone] = zones.map(z => (z.name.toLowerCase(), z)).toMap
 
